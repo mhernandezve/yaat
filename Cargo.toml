@@ -10,8 +10,33 @@ keywords = ["dotfiles", "config", "cli", "git", "sync"]
 categories = ["command-line-utilities", "config"]
 
 [dependencies]
-git2 = { version = "0.20.2", features = ["https", "ssh"] }
-symlink = "0.1.0"
+# CLI and argument parsing
+clap = { version = "4.5", features = ["derive"] }
+
+# Cross-platform directory handling
+dirs = "6.0"
+hostname = "0.4"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Git operations
+git2 = { version = "0.20", features = ["https", "ssh"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+
+# Symlink handling
+symlink = "0.1"
+
+# Directory walking
+walkdir = "2.5"
 
 [profile.release]
 opt-level = 3

@@ -1,61 +1,95 @@
-use git2::Repository;
-use std::path::Path;
-use std::os::unix::fs;
-use std::process::Command;
-use std::io;
+use anyhow::Result;
+use clap::Parser;
+use std::path::PathBuf;
+use tracing::info;
 
-fn clone_repo(repo_url: &str, repo_path: &str) -> Result<Repository, git2::Error> {
-    Repository::clone(repo_url, repo_path)
-}
+mod cli;
+mod commands;
+mod config;
+mod git;
+mod platform;
 
-fn open_repo(repo_path: &str) -> Result<Repository, git2::Error> {
-    Repository::open(repo_path)
-}
+use cli::{Cli, Commands};
+use commands::CommandContext;
 
-fn validate_path(path: &str) -> bool {
-    Path::new(path).exists()
-}
+fn main() -> Result<()> {
+    let cli = Cli::parse();
 
-fn create_symlink(target: &str, link_path: &str) -> io::Result<()> {
-    fs::symlink(target, link_path)
-}
+    // Initialize tracing
+    let _subscriber = tracing_subscriber::fmt()
+        .with_max_level(if cli.verbose {
+            tracing::Level::DEBUG
+        } else {
+            tracing::Level::INFO
+        })
+        .init();
 
-fn run_nvim_update() -> io::Result<()> {
-    let output = Command::new("nvim")
-        .arg("--headless")
-        .arg("+Lazy! update")
-        .arg("+qa")
-        .output()?;
+    // Find repository
+    let repo_path = find_repo()?;
 
-    if output.status.success() {
-        println!("nvim update succeeded");
-        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    } else {
-        eprintln!("nvim update failed");
-        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    // Load configuration
+    let config_path = platform::yaat_config_path(&repo_path);
+    let config = config::YaatConfig::from_file(&config_path)?;
+
+    let mut context = CommandContext::new(config, repo_path);
+
+    match cli.command {
+        Commands::Init { path, clone } => {
+            commands::init::execute(path, clone, &mut context)?;
+        }
+        Commands::Add { file, host } => {
+            commands::add::execute(file, host, &mut context)?;
+        }
+        Commands::Sync { host, dry_run } => {
+            commands::sync::execute(host, dry_run, &mut context)?;
+        }
+        Commands::Backup { host, dry_run } => {
+            commands::backup::execute(host, dry_run, &mut context)?;
+        }
+        Commands::Status { verbose } => {
+            commands::status::execute(verbose, &mut context)?;
+        }
     }
+
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let repo_path = "/home/mh0s/.aaaa/";
-    let repo_url = "https://github.com/mhernandezve/dotfiles.git";
-
-    if validate_path(repo_path) {
-        println!("Path already exists. Opening...");
-        open_repo(repo_path)?;
-        return Ok(());
+fn find_repo() -> Result<PathBuf> {
+    // First, check environment variable
+    if let Ok(repo_path) = std::env::var("YAAT_REPO") {
+        let path = PathBuf::from(repo_path);
+        if git::is_git_repo(&path) {
+            return Ok(path);
+        }
+        info!("YAAT_REPO points to non-git directory, searching elsewhere...");
     }
 
-    clone_repo(repo_url, repo_path)?;
-    println!("Repository cloned successfully!");
-
-    match create_symlink(repo_path, "/home/mh0s/.config/nvim.1") {
-        Ok(_) => println!("Symlink created successfully"),
-        Err(e) => eprintln!("Failed to create symlink: {}", e),
+    // Check default location
+    let default = platform::default_repo_path()?;
+    if git::is_git_repo(&default) {
+        return Ok(default);
     }
 
-    run_nvim_update()?;
+    // Search up from current directory
+    let mut current = std::env::current_dir()?;
+    loop {
+        if git::is_git_repo(&current) {
+            // Check if this is a YAAT repo (has yaat.yaml)
+            let yaat_config = current.join("yaat.yaml");
+            if yaat_config.exists() {
+                return Ok(current);
+            }
+        }
 
-    Ok(())
+        if let Some(parent) = current.parent() {
+            current = parent.to_path_buf();
+        } else {
+            break;
+        }
+    }
+
+    Err(anyhow::anyhow!(
+        "Could not find YAAT repository.\n\
+        Run 'yaat init' to create one, or set YAAT_REPO environment variable."
+    ))
 }
