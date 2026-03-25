@@ -38,6 +38,9 @@ symlink = "0.1"
 # Directory walking
 walkdir = "2.5"
 
+[dev-dependencies]
+tempfile = "3.10"
+
 [profile.release]
 opt-level = 3
 lto = true

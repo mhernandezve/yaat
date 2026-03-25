@@ -69,9 +69,8 @@ pub fn execute(
 
     // Add initial files and commit
     repo.add(&config_path)?;
-    repo.add(&config_dir)?;
-    repo.add(&home_dir)?;
-    repo.add(&hosts_dir)?;
+    // Note: We don't add empty directories to git index
+    // They will be created on sync
 
     let commit_msg = if was_cloned {
         "Initialize YAAT repository from remote"
