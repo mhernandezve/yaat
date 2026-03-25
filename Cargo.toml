@@ -1,0 +1,19 @@
+[package]
+name = "yaat"
+version = "0.1.0"
+edition = "2021"
+authors = ["Miguel Hernandez <mh@andsoluciones.com>"]
+description = "Yet Another Dotfiles Manager - CLI tool for managing configuration files"
+license = "MIT"
+repository = "https://github.com/mhernandezve/yaat"
+keywords = ["dotfiles", "config", "cli", "git", "sync"]
+categories = ["command-line-utilities", "config"]
+
+[dependencies]
+git2 = { version = "0.20.2", features = ["https", "ssh"] }
+symlink = "0.1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
