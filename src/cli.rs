@@ -34,14 +34,14 @@ pub enum Commands {
         file: PathBuf,
 
         /// Host-specific configuration
-        #[arg(short, long, value_name = "HOST")]
+        #[arg(short = 'H', long, value_name = "HOST")]
         host: Option<String>,
     },
 
     /// Sync configurations from repository to system
     Sync {
         /// Specific host configuration to sync
-        #[arg(short, long, value_name = "HOST")]
+        #[arg(short = 'H', long, value_name = "HOST")]
         host: Option<String>,
 
         /// Dry run - show what would be done without making changes
@@ -52,7 +52,7 @@ pub enum Commands {
     /// Backup current system configurations to repository
     Backup {
         /// Specific host to backup for
-        #[arg(short, long, value_name = "HOST")]
+        #[arg(short = 'H', long, value_name = "HOST")]
         host: Option<String>,
 
         /// Dry run - show what would be done without making changes
