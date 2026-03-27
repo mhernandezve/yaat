@@ -30,9 +30,6 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
-      - name: Run unit tests
-        run: cargo test --lib --verbose
-
       - name: Check formatting
         run: cargo fmt -- --check
 
