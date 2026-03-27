@@ -4,11 +4,34 @@ use std::process::Command;
 use tempfile::TempDir;
 
 fn get_yaat_bin() -> PathBuf {
+    // First, try to find the binary in the expected locations
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
-    PathBuf::from(manifest_dir)
-        .join("target")
-        .join("debug")
-        .join("yaat")
+
+    // Try multiple possible locations
+    let possible_paths = [
+        PathBuf::from(&manifest_dir)
+            .join("target")
+            .join("debug")
+            .join("yaat"),
+        PathBuf::from(&manifest_dir)
+            .join("target")
+            .join("release")
+            .join("yaat"),
+        // For CI environment, check CARGO_BIN_EXE_YAAT
+        std::env::var("CARGO_BIN_EXE_YAAT")
+            .map(PathBuf::from)
+            .unwrap_or_default(),
+    ];
+
+    for path in &possible_paths {
+        if path.exists() {
+            return path.clone();
+        }
+    }
+
+    // Fallback: return the debug path even if it doesn't exist
+    // This will give a clearer error message
+    possible_paths[0].clone()
 }
 
 fn run_yaat(args: &[&str]) -> (bool, String, String) {
