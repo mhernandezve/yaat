@@ -52,7 +52,7 @@ fn run_yaat(args: &[&str]) -> (bool, String, String) {
 fn test_yaat_help() {
     let (success, stdout, _) = run_yaat(&["--help"]);
     assert!(success);
-    assert!(stdout.contains("Yet Another Dotfiles Manager"));
+    assert!(stdout.contains("Yet Another Assets Tool"));
     assert!(stdout.contains("init"));
     assert!(stdout.contains("add"));
     assert!(stdout.contains("sync"));

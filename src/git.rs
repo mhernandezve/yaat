@@ -19,7 +19,7 @@ impl GitRepo {
         // Create initial .gitignore
         let gitignore_path = path.join(".gitignore");
         if !gitignore_path.exists() {
-            let gitignore_content = r#"# YAAT - Yet Another Dotfiles Manager
+            let gitignore_content = r#"# YAAT - Yet Another Assets Tool
 # This file is managed by YAAT
 
 # OS files
