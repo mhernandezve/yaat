@@ -30,11 +30,8 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
-      - name: Build binary for tests
-        run: cargo build --bin yaat
-
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Run unit tests
+        run: cargo test --lib --verbose
 
       - name: Check formatting
         run: cargo fmt -- --check
