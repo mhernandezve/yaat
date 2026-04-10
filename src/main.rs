@@ -7,6 +7,7 @@ mod cli;
 mod commands;
 mod config;
 mod git;
+mod known_configs;
 mod platform;
 
 use cli::{Cli, Commands};

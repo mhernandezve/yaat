@@ -80,79 +80,148 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
 
 fn backup_config_files(
     config_dir: &Path,
-    _home_dir: &Path,
+    home_dir: &Path,
     context: &mut CommandContext,
     dry_run: bool,
 ) -> Result<(usize, usize)> {
     let mut backed_up = 0;
     let mut skipped = 0;
 
-    // Walk the config directory
-    for entry in walkdir::WalkDir::new(config_dir)
-        .follow_links(false)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let system_path = entry.path();
+    // If include list is specified, only backup those directories
+    if !context.config.include.is_empty() {
+        info!("Using include list from yaat.yaml");
 
-        // Skip directories
-        if system_path.is_dir() {
-            continue;
-        }
+        for included in &context.config.include {
+            // Skip comments and empty lines
+            if included.starts_with('#') || included.trim().is_empty() {
+                continue;
+            }
 
-        // Skip symlinks (to avoid broken links and preserve system symlinks)
-        if system_path.is_symlink() {
-            if let Ok(target) = fs::read_link(system_path) {
-                warn!(
-                    "Skipping symlink: {} -> {}. \
-                     Ensure the target is backed up in your dotfiles repository, \
-                     or manually copy the content if needed.",
-                    system_path.display(),
-                    target.display()
-                );
+            let full_path = if included.starts_with("config/") {
+                let subpath = included.strip_prefix("config/").unwrap();
+                config_dir.join(subpath)
+            } else if included.starts_with("home/") {
+                let subpath = included.strip_prefix("home/").unwrap();
+                home_dir.join(subpath)
             } else {
                 warn!(
-                    "Skipping broken symlink: {}. \
-                     The target no longer exists.",
-                    system_path.display()
+                    "Invalid include path (must start with config/ or home/): {}",
+                    included
                 );
-            }
-            skipped += 1;
-            continue;
-        }
+                continue;
+            };
 
-        // Convert to relative path
-        let repo_relative =
-            match system_to_repo_path(&system_path.to_path_buf(), &context.repo_path) {
-                Ok(p) => p,
-                Err(e) => {
-                    debug!("Could not convert path: {} - {}", system_path.display(), e);
+            if !full_path.exists() {
+                debug!("Included path does not exist: {}", full_path.display());
+                continue;
+            }
+
+            if full_path.is_dir() {
+                // Backup entire directory
+                for entry in walkdir::WalkDir::new(&full_path)
+                    .follow_links(false)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                {
+                    let system_path = entry.path();
+                    if system_path.is_dir() {
+                        continue;
+                    }
+
+                    // Skip symlinks
+                    if system_path.is_symlink() {
+                        warn_symlink(system_path);
+                        skipped += 1;
+                        continue;
+                    }
+
+                    // Convert to relative path
+                    let repo_relative =
+                        match system_to_repo_path(&system_path.to_path_buf(), &context.repo_path) {
+                            Ok(p) => p,
+                            Err(e) => {
+                                debug!("Could not convert path: {} - {}", system_path.display(), e);
+                                skipped += 1;
+                                continue;
+                            }
+                        };
+
+                    // Check if excluded
+                    if context
+                        .config
+                        .is_excluded(&repo_relative.to_string_lossy(), None)
+                    {
+                        debug!("Skipping excluded file: {}", system_path.display());
+                        skipped += 1;
+                        continue;
+                    }
+
+                    let target = context.repo_path.join(&repo_relative);
+                    if backup_file(system_path, &target, dry_run)? {
+                        backed_up += 1;
+                    } else {
+                        skipped += 1;
+                    }
+                }
+            } else {
+                // Backup single file
+                if full_path.is_symlink() {
+                    warn_symlink(&full_path);
                     skipped += 1;
                     continue;
                 }
-            };
 
-        // Check if excluded
-        if context
-            .config
-            .is_excluded(&repo_relative.to_string_lossy(), None)
-        {
-            debug!("Skipping excluded file: {}", system_path.display());
-            skipped += 1;
-            continue;
+                let repo_relative = match system_to_repo_path(&full_path, &context.repo_path) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        debug!("Could not convert path: {} - {}", full_path.display(), e);
+                        skipped += 1;
+                        continue;
+                    }
+                };
+
+                if context
+                    .config
+                    .is_excluded(&repo_relative.to_string_lossy(), None)
+                {
+                    skipped += 1;
+                    continue;
+                }
+
+                let target = context.repo_path.join(&repo_relative);
+                if backup_file(&full_path, &target, dry_run)? {
+                    backed_up += 1;
+                } else {
+                    skipped += 1;
+                }
+            }
         }
 
-        // Determine target path in repo
-        let target = context.repo_path.join(&repo_relative);
-
-        if backup_file(system_path, &target, dry_run)? {
-            backed_up += 1;
-        } else {
-            skipped += 1;
-        }
+        return Ok((backed_up, skipped));
     }
 
-    Ok((backed_up, skipped))
+    // If include list is empty, show message and don't backup anything (Option C behavior)
+    info!("No configs specified in include list, nothing to backup");
+    info!("Edit yaat.yaml and add items to the include list");
+    Ok((0, 0))
+}
+
+fn warn_symlink(path: &Path) {
+    if let Ok(target) = fs::read_link(path) {
+        warn!(
+            "Skipping symlink: {} -> {}. \
+             Ensure the target is backed up in your dotfiles repository, \
+             or manually copy the content if needed.",
+            path.display(),
+            target.display()
+        );
+    } else {
+        warn!(
+            "Skipping broken symlink: {}. \
+             The target no longer exists.",
+            path.display()
+        );
+    }
 }
 
 fn backup_file(source: &Path, target: &Path, dry_run: bool) -> Result<bool> {

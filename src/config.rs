@@ -17,6 +17,10 @@ pub struct YaatConfig {
     #[serde(default)]
     pub exclude: Vec<String>,
 
+    /// Files/directories to include (if specified, only these are backed up)
+    #[serde(default)]
+    pub include: Vec<String>,
+
     /// Host-specific configurations
     #[serde(default)]
     pub hosts: HashMap<String, HostConfig>,
@@ -65,6 +69,7 @@ impl Default for YaatConfig {
                 "target".to_string(),
                 ".cache".to_string(),
             ],
+            include: vec![], // Empty by default, will be populated during init
             hosts: HashMap::new(),
             symlink: SymlinkConfig::default(),
         }
