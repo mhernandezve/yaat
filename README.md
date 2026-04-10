@@ -3,17 +3,20 @@
 [![CI](https://github.com/mhernandezve/yaat/actions/workflows/ci.yml/badge.svg)](https://github.com/mhernandezve/yaat/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A modern, cross-platform dotfiles manager written in Rust. YAAT helps you maintain a single source of truth for your configuration files across multiple machines.
+A modern, cross-platform dotfiles manager written in Rust. YAAT helps you maintain a single source of truth for your configuration files across multiple machines using Git.
 
 ## Features
 
 - 🖥️ **Cross-platform**: Works on Linux, macOS, and Windows
 - 🔗 **Git-based**: Version control for your configurations
 - 🎯 **Host-specific configs**: Different settings per machine
+- 📋 **Include list**: Selective backup (only what you want)
+- 🔍 **Auto-detection**: Automatically finds your dotfiles during init
 - 🔗 **Symlink or copy**: Choose how to sync your files
 - 🛡️ **Backup before sync**: Automatic backups prevent data loss
 - 📝 **Dry-run mode**: Preview changes before applying
 - 🔍 **Status tracking**: See what's synced and what's pending
+- 📦 **Package management**: Optional scripts for migrating installed packages
 
 ## Installation
 
@@ -49,9 +52,12 @@ yaat init
 # Or specify a custom location
 yaat init ~/my-dotfiles
 
-# Or clone from an existing remote repository
-yaat init --clone https://github.com/username/dotfiles.git
+# Or use YAAT_REPO environment variable
+export YAAT_REPO=~/my-dotfiles
+yaat init
 ```
+
+YAAT will auto-detect your configuration files and create an `include` list.
 
 This creates:
 ```
@@ -59,42 +65,42 @@ This creates:
 ├── config/          # Files that go to ~/.config
 ├── home/            # Files that go to ~
 ├── hosts/           # Host-specific configurations
+├── packages/        # Package lists (optional)
+├── scripts/         # Helper scripts (optional)
 ├── yaat.yaml        # YAAT configuration
 ├── .git/            # Git repository
 └── .gitignore       # Default ignores
 ```
 
-### 2. Add Configuration Files
+### 2. Review and Customize
 
-```bash
-# Add a file from ~/.config
-yaat add ~/.config/kitty/kitty.conf
+Edit `yaat.yaml` to customize what gets backed up:
 
-# Add with host-specific configuration
-yaat add ~/.config/hypr/hyprland.conf --host desktop
+```yaml
+repo_path: ~/.dotfiles
 
-# Files are automatically committed to git
+# Auto-detected configs (edit as needed)
+include:
+  - config/hypr/          # Window manager
+  - config/waybar/        # Status bar
+  - config/fish/          # Shell
+  - config/kitty/         # Terminal
+  - config/nvim/          # Editor
+  # Remove items you don't want to track
+  # Add items that weren't auto-detected
+
+exclude:
+  - .git
+  - node_modules
+  - target
+  - .cache
+
+symlink:
+  enabled: true
+  backup: true
 ```
 
-### 3. Sync to Your System
-
-```bash
-# Preview what will be synced (dry-run)
-yaat sync --dry-run
-
-# Actually sync (creates symlinks by default)
-yaat sync
-
-# Sync only for a specific host
-yaat sync --host desktop
-
-# Output shows:
-# - Files being backed up (existing files are renamed to .backup)
-# - Symlinks being created
-# - Summary of synced vs skipped files
-```
-
-### 4. Backup Current System
+### 3. Backup Current System
 
 ```bash
 # Preview what will be backed up
@@ -103,8 +109,24 @@ yaat backup --dry-run
 # Backup current configs to repository
 yaat backup
 
-# This copies files from ~/.config to the repo
-# and creates a commit
+# This only backs up files/directories in your include list
+```
+
+### 4. Sync to Another Machine
+
+```bash
+# Clone your dotfiles
+git clone https://github.com/username/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
+
+# Preview sync
+yaat sync --dry-run
+
+# Actually sync (creates symlinks by default)
+yaat sync
+
+# Sync only for a specific host
+yaat sync --host desktop
 ```
 
 ### 5. Check Status
@@ -117,12 +139,6 @@ yaat status
 yaat status --verbose
 ```
 
-Shows:
-- Repository location
-- Git status (modified/untracked files)
-- Configuration settings
-- Sync status (what's synced, pending, or diverged)
-
 ## Configuration
 
 YAAT uses a `yaat.yaml` file in your dotfiles repository:
@@ -134,11 +150,24 @@ repo_path: ~/.dotfiles
 # Default hostname for syncing
 default_host: my-laptop
 
-# Files/directories to exclude globally
+# Files/directories to INCLUDE (if set, only these are backed up)
+# Auto-populated during 'yaat init', edit as needed
+include:
+  - config/hypr/
+  - config/waybar/
+  - config/fish/
+  - config/kitty/
+  - config/nvim/
+  - home/.bashrc
+
+# Files/directories to exclude (applied within included paths)
 exclude:
   - .git
   - .gitignore
   - yaat.yaml
+  - node_modules
+  - target
+  - .cache
   - "*.tmp"
 
 # Symlink settings
@@ -149,19 +178,27 @@ symlink:
 # Host-specific configurations
 hosts:
   desktop:
-    files:
-      - config/hypr/desktop-specific.conf
-    exclude:
-      - config/waybar/laptop-config
-    env:
-      MONITOR: DP-1
+    files: []
+    exclude: []
+    env: {}
   
   laptop:
-    files:
-      - config/hypr/laptop-specific.conf
-    exclude:
-      - config/waybar/desktop-config
+    files: []
+    exclude: []
+    env: {}
 ```
+
+### Auto-Detected Configurations
+
+During `yaat init`, YAAT automatically detects these common configurations:
+
+- **Desktop**: hypr, waybar, walker, mako, omarchy
+- **Terminals**: kitty, alacritty, ghostty, foot, wezterm
+- **Editors**: nvim, vim, helix
+- **Shells**: fish, zsh, bash
+- **Multiplexers**: tmux, tmuxinator, zellij
+- **Tools**: git, lazygit, btop, fastfetch, fzf
+- **Input**: fcitx, fcitx5, ibus
 
 ## How It Works
 
@@ -180,11 +217,12 @@ hosts:
 │   ├── .zshrc
 │   ├── .bashrc
 │   └── .gitconfig
-└── hosts/
-    ├── desktop/         # Desktop-specific overrides
-    │   └── config/hypr/
-    └── laptop/          # Laptop-specific overrides
-        └── config/hypr/
+├── hosts/               # Host-specific overrides
+│   ├── desktop/
+│   │   └── config/hypr/
+│   └── laptop/
+│       └── config/hypr/
+└── yaat.yaml
 ```
 
 ### Sync Process
@@ -196,17 +234,52 @@ hosts:
    - Creates symlinks or copies files to system locations
 
 2. **From System to Repo** (`yaat backup`):
-   - Scans `~/.config` and tracked home files
-   - Copies modified files back to repository
+   - Only processes files/directories in `include` list
+   - Skips symlinks (with warning)
+   - Copies files back to repository
    - Creates a git commit
 
-## Advanced Usage
+### Include List Behavior
 
-### Environment Variables
+- **If `include` is populated**: Only those files/directories are backed up
+- **If `include` is empty**: Shows "Nothing to backup" message
+- **Symlinks**: Always skipped (to avoid broken links)
+- **Works with `exclude`**: You can include a directory but exclude specific files
+
+## Helper Scripts
+
+Place these in your dotfiles repository (not in YAAT itself):
+
+### `apply-dotfiles`
+Main entrypoint that orchestrates sync + runtime reload:
+```bash
+./scripts/apply-dotfiles
+# Detects host, runs yaat sync, reloads desktop components
+```
+
+### `export-packages.sh` / `install-packages.sh`
+For migrating installed packages:
+```bash
+# Export packages
+./scripts/export-packages.sh
+
+# Preview missing packages
+./scripts/install-packages.sh --dry-run --only-missing
+
+# Install missing packages
+./scripts/install-packages.sh
+```
+
+See [dotfiles-alt](https://github.com/mhernandezve/dotfiles-alt) for a complete example.
+
+## Environment Variables
 
 - `YAAT_REPO`: Override the default repository path
+- `DOTFILES_HOST`: Override auto-detected hostname
 - `HOME`: Used to resolve `~` in paths
 - `XDG_CONFIG_HOME`: Config directory (default: `~/.config`)
+
+## Advanced Usage
 
 ### Verbose Mode
 
@@ -224,6 +297,17 @@ Preview changes without making them:
 ```bash
 yaat sync --dry-run
 yaat backup --dry-run
+```
+
+### Working with YAAT_REPO
+
+```bash
+# Set temporarily for one command
+YAAT_REPO=~/work-dotfiles yaat backup
+
+# Or export for the session
+export YAAT_REPO=~/work-dotfiles
+yaat sync
 ```
 
 ## Development
@@ -261,17 +345,18 @@ cargo build --release
 
 ```
 src/
-├── main.rs          # Entry point
-├── cli.rs           # CLI argument parsing
-├── config.rs        # Configuration management
-├── git.rs           # Git operations wrapper
-├── platform.rs      # Cross-platform utilities
+├── main.rs           # Entry point
+├── cli.rs            # CLI argument parsing
+├── config.rs         # Configuration management
+├── git.rs            # Git operations wrapper
+├── known_configs.rs  # Auto-detection whitelist
+├── platform.rs       # Cross-platform utilities
 └── commands/
-    ├── init.rs      # Initialize repository
-    ├── add.rs       # Add files to tracking
-    ├── sync.rs      # Sync to system
-    ├── backup.rs    # Backup to repository
-    └── status.rs    # Show status
+    ├── init.rs       # Initialize repository
+    ├── add.rs        # Add files to tracking
+    ├── sync.rs       # Sync to system
+    ├── backup.rs     # Backup to repository
+    └── status.rs     # Show status
 ```
 
 ## Troubleshooting
@@ -284,16 +369,32 @@ Run `yaat init` to create a repository, or set `YAAT_REPO` environment variable:
 export YAAT_REPO=/path/to/your/dotfiles
 ```
 
-### "Path is not within home, config, or repo directories"
+### "No configs in include list, nothing to backup"
 
-YAAT only tracks files in:
-- `~/.config/` → stored in `config/`
-- `~/` (home) → stored in `home/`
-- Files already in the repo
+Your `include` list in `yaat.yaml` is empty. Add some configurations:
+
+```yaml
+include:
+  - config/hypr/
+  - config/fish/
+```
+
+Or run `yaat init` again to auto-detect.
 
 ### Symlink Issues on Windows
 
 Windows requires Developer Mode or Administrator privileges to create symlinks. If symlinks fail, YAAT will fall back to copying files.
+
+### Package Installation
+
+For package management scripts, ensure you have the appropriate helper:
+- **Arch**: `yay` or `paru` for AUR packages
+- **Debian/Ubuntu**: Standard `apt`
+
+## Related Projects
+
+- **Dotfiles Example**: [dotfiles-alt](https://github.com/mhernandezve/dotfiles-alt) - Complete example with scripts
+- **Inspiration**: [yadm](https://github.com/TheLocehiliosan/yadm), [chezmoi](https://github.com/twpayne/chezmoi)
 
 ## License
 
