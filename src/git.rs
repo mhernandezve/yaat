@@ -98,6 +98,24 @@ Thumbs.db
         Ok(())
     }
 
+    /// Stage all changes in the repository (equivalent to 'git add .')
+    pub fn add_all(&self) -> Result<()> {
+        let mut index = self
+            .repo
+            .index()
+            .context("Failed to get repository index")?;
+
+        // Add all files in the working directory
+        index
+            .add_all(&["."], git2::IndexAddOption::DEFAULT, None)
+            .context("Failed to add all files to index")?;
+
+        index.write().context("Failed to write index")?;
+
+        debug!("Added all changes to git index");
+        Ok(())
+    }
+
     /// Commit changes with a message
     pub fn commit(&self, message: &str) -> Result<()> {
         let mut index = self
@@ -177,6 +195,7 @@ Thumbs.db
 }
 
 /// Check if a directory is a git repository
+/// Accepts empty repositories (no commits yet)
 pub fn is_git_repo(path: &PathBuf) -> bool {
-    Repository::open(path).is_ok()
+    path.join(".git").is_dir()
 }

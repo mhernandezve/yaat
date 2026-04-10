@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::commands::CommandContext;
 use crate::git::GitRepo;
@@ -54,7 +54,7 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
         let repo = GitRepo::open(&context.repo_path)?;
 
         // Stage all changes
-        repo.add(&context.repo_path)?;
+        repo.add_all()?;
 
         // Commit
         let commit_msg = format!("Backup configurations for {}", hostname);
@@ -100,6 +100,27 @@ fn backup_config_files(
             continue;
         }
 
+        // Skip symlinks (to avoid broken links and preserve system symlinks)
+        if system_path.is_symlink() {
+            if let Ok(target) = fs::read_link(system_path) {
+                warn!(
+                    "Skipping symlink: {} -> {}. \
+                     Ensure the target is backed up in your dotfiles repository, \
+                     or manually copy the content if needed.",
+                    system_path.display(),
+                    target.display()
+                );
+            } else {
+                warn!(
+                    "Skipping broken symlink: {}. \
+                     The target no longer exists.",
+                    system_path.display()
+                );
+            }
+            skipped += 1;
+            continue;
+        }
+
         // Convert to relative path
         let repo_relative =
             match system_to_repo_path(&system_path.to_path_buf(), &context.repo_path) {
@@ -135,6 +156,15 @@ fn backup_config_files(
 }
 
 fn backup_file(source: &Path, target: &Path, dry_run: bool) -> Result<bool> {
+    // Ensure parent directory exists (for both new and updated files)
+    if let Some(parent) = target.parent() {
+        if !parent.exists() && !dry_run {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+            debug!("Created directory: {}", parent.display());
+        }
+    }
+
     // Check if file has changed
     if target.exists() {
         let source_modified = fs::metadata(source).and_then(|m| m.modified()).ok();
@@ -166,15 +196,6 @@ fn backup_file(source: &Path, target: &Path, dry_run: bool) -> Result<bool> {
             info!("Updated: {} -> {}", source.display(), target.display());
         }
     } else {
-        // Ensure parent directory exists
-        if let Some(parent) = target.parent() {
-            if !parent.exists() && !dry_run {
-                fs::create_dir_all(parent)
-                    .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
-                debug!("Created directory: {}", parent.display());
-            }
-        }
-
         if dry_run {
             info!(
                 "[DRY RUN] Would backup: {} -> {}",
@@ -220,6 +241,12 @@ fn get_tracked_home_files(context: &CommandContext) -> Result<Vec<PathBuf>> {
         let repo_path = entry.path();
 
         if repo_path.is_dir() {
+            continue;
+        }
+
+        // Skip symlinks
+        if repo_path.is_symlink() {
+            debug!("Skipping symlink: {}", repo_path.display());
             continue;
         }
 

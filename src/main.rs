@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use std::path::PathBuf;
 use tracing::info;
@@ -24,34 +24,58 @@ fn main() -> Result<()> {
         })
         .init();
 
-    // Find repository
-    let repo_path = find_repo()?;
-
-    // Load configuration
-    let config_path = platform::yaat_config_path(&repo_path);
-    let config = config::YaatConfig::from_file(&config_path)?;
-
-    let mut context = CommandContext::new(config, repo_path);
-
     match cli.command {
         Commands::Init { path, clone } => {
-            commands::init::execute(path, clone, &mut context)?;
+            // For init, resolve path directly without find_repo()
+            let repo_path = resolve_init_path(path)?;
+            commands::init::execute(repo_path, clone)?;
         }
-        Commands::Add { file, host } => {
-            commands::add::execute(file, host, &mut context)?;
-        }
-        Commands::Sync { host, dry_run } => {
-            commands::sync::execute(host, dry_run, &mut context)?;
-        }
-        Commands::Backup { host, dry_run } => {
-            commands::backup::execute(host, dry_run, &mut context)?;
-        }
-        Commands::Status { verbose } => {
-            commands::status::execute(verbose, &mut context)?;
+        other_command => {
+            // For other commands, find existing repo
+            let repo_path = find_repo()?;
+            let config_path = platform::yaat_config_path(&repo_path);
+            let config = config::YaatConfig::from_file(&config_path)?;
+            let mut context = CommandContext::new(config, repo_path);
+
+            match other_command {
+                Commands::Add { file, host } => {
+                    commands::add::execute(file, host, &mut context)?;
+                }
+                Commands::Sync { host, dry_run } => {
+                    commands::sync::execute(host, dry_run, &mut context)?;
+                }
+                Commands::Backup { host, dry_run } => {
+                    commands::backup::execute(host, dry_run, &mut context)?;
+                }
+                Commands::Status { verbose } => {
+                    commands::status::execute(verbose, &mut context)?;
+                }
+                Commands::Init { .. } => unreachable!(),
+            }
         }
     }
 
     Ok(())
+}
+
+/// Resolve repository path for init command
+/// Priority: CLI argument > YAAT_REPO env > default
+fn resolve_init_path(cli_path: Option<PathBuf>) -> Result<PathBuf> {
+    let path = match cli_path {
+        Some(p) => p,
+        None => match std::env::var("YAAT_REPO") {
+            Ok(env_path) => PathBuf::from(env_path),
+            Err(_) => platform::default_repo_path()?,
+        },
+    };
+
+    // Expand ~ to home directory
+    if path.starts_with("~") {
+        let home = dirs::home_dir().context("Could not determine home directory")?;
+        Ok(home.join(path.strip_prefix("~").unwrap()))
+    } else {
+        Ok(path)
+    }
 }
 
 fn find_repo() -> Result<PathBuf> {
