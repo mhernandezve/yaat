@@ -17,9 +17,13 @@ pub struct YaatConfig {
     #[serde(default)]
     pub exclude: Vec<String>,
 
-    /// Files/directories to include (if specified, only these are backed up)
+    /// Directories in ~/.config/ to include (backed up as complete folders, symlinked as directories)
     #[serde(default)]
-    pub include: Vec<String>,
+    pub config_dirs: Vec<String>,
+
+    /// Individual files in ~/ to include (backed up and symlinked individually)
+    #[serde(default)]
+    pub home_files: Vec<String>,
 
     /// Host-specific configurations
     #[serde(default)]
@@ -69,7 +73,8 @@ impl Default for YaatConfig {
                 "target".to_string(),
                 ".cache".to_string(),
             ],
-            include: vec![], // Empty by default, will be populated during init
+            config_dirs: vec![], // Empty by default, will be populated during init
+            home_files: vec![],  // Empty by default, will be populated during init
             hosts: HashMap::new(),
             symlink: SymlinkConfig::default(),
         }
@@ -155,5 +160,19 @@ impl YaatConfig {
         }
 
         false
+    }
+
+    /// Check if a config directory is managed
+    pub fn is_config_dir_managed(&self, name: &str) -> bool {
+        self.config_dirs
+            .iter()
+            .any(|d| d == name || d.trim_end_matches('/') == name)
+    }
+
+    /// Check if a home file is managed
+    pub fn is_home_file_managed(&self, name: &str) -> bool {
+        self.home_files
+            .iter()
+            .any(|f| f == name || f.trim_start_matches('.') == name.trim_start_matches('.'))
     }
 }

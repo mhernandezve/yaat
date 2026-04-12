@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tracing::{debug, info};
 
@@ -34,11 +34,12 @@ pub fn execute(repo_path: PathBuf, clone_url: Option<String>) -> Result<()> {
     }
 
     // Auto-detect known configurations
-    let detected_configs = detect_known_configs();
+    let (detected_configs, detected_home_files) = detect_known_configs();
 
     // Create config file (yaat.yaml) with detected configs
     let mut config = YaatConfig::default();
-    config.include = detected_configs;
+    config.config_dirs = detected_configs;
+    config.home_files = detected_home_files;
     let config_path = repo_path.join("yaat.yaml");
     config.to_file(&config_path)?;
     debug!("Created yaat.yaml");
@@ -73,35 +74,36 @@ pub fn execute(repo_path: PathBuf, clone_url: Option<String>) -> Result<()> {
     repo.commit(commit_msg)?;
 
     // Display detected configs
-    let detected_count = config
-        .include
-        .iter()
-        .filter(|s| !s.starts_with('#'))
-        .count();
+    let config_count = config.config_dirs.len();
+    let home_count = config.home_files.len();
 
     info!(
         "✓ Successfully initialized YAAT repository at {}",
         repo_path.display()
     );
 
-    if detected_count > 0 {
-        info!("  Detected {} known configurations:", detected_count);
-        for item in &config.include {
-            if !item.starts_with('#') {
-                info!("    - {}", item);
-            }
+    if config_count > 0 {
+        info!("  Detected {} config directories:", config_count);
+        for item in &config.config_dirs {
+            info!("    - {}", item);
         }
-        info!(
-            "  Edit {} to add/remove configurations",
-            config_path.display()
-        );
-    } else {
-        info!("  No known configurations detected.");
-        info!(
-            "  Edit {} to add your configurations manually",
-            config_path.display()
-        );
     }
+
+    if home_count > 0 {
+        info!("  Detected {} home files:", home_count);
+        for item in &config.home_files {
+            info!("    - {}", item);
+        }
+    }
+
+    if config_count == 0 && home_count == 0 {
+        info!("  No known configurations detected.");
+    }
+
+    info!(
+        "  Edit {} to add/remove configurations",
+        config_path.display()
+    );
 
     info!("  Config directory: {}", config_dir.display());
     info!("  Home files: {}", home_dir.display());
@@ -116,40 +118,36 @@ fn is_yaat_repo(path: &PathBuf) -> bool {
 }
 
 /// Detect known configuration directories and files
-fn detect_known_configs() -> Vec<String> {
-    let mut include = Vec::new();
+/// Returns (config_dirs, home_files)
+fn detect_known_configs() -> (Vec<String>, Vec<String>) {
+    let mut config_dirs = Vec::new();
+    let mut home_files = Vec::new();
 
     // Detect known configs in ~/.config/
     if let Some(config_dir) = dirs::config_dir() {
         for config in KNOWN_CONFIGS {
             if config_dir.join(config).exists() {
-                include.push(format!("config/{}/", config));
+                config_dirs.push(config.to_string());
             }
         }
     }
 
     // Detect known files in ~/
     if let Some(home_dir) = dirs::home_dir() {
-        for (file, repo_path) in KNOWN_HOME_FILES {
+        for file in KNOWN_HOME_FILES {
             if home_dir.join(file).exists() {
-                include.push(repo_path.to_string());
+                home_files.push(file.to_string());
             }
         }
     }
 
-    // Add comment if nothing detected
-    if include.is_empty() {
-        include.push("# No known configurations detected".to_string());
-        include.push("# Add your configurations below, e.g.:".to_string());
-        include.push("# - config/hypr/".to_string());
-        include.push("# - home/.bashrc".to_string());
+    // Add comments if nothing detected
+    if config_dirs.is_empty() {
+        config_dirs.push("# No config directories detected".to_string());
+    }
+    if home_files.is_empty() {
+        home_files.push("# No home files detected".to_string());
     }
 
-    // Add optional IDE configs as comments
-    include.push("#".to_string());
-    include.push("# Optional: Uncomment to include IDE settings".to_string());
-    include.push("# - config/Code/          # VS Code".to_string());
-    include.push("# - config/Cursor/        # Cursor IDE".to_string());
-
-    include
+    (config_dirs, home_files)
 }

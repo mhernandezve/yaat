@@ -1,4 +1,5 @@
-/// List of known configuration directories that YAAT will auto-detect
+/// List of known configuration directories in ~/.config/ that YAAT will auto-detect
+/// These are backed up as complete directories and symlinked as directory symlinks
 pub const KNOWN_CONFIGS: &[&str] = &[
     // Desktop/Window Manager
     "hypr",
@@ -66,11 +67,17 @@ pub const KNOWN_CONFIGS: &[&str] = &[
     "ibus",
 ];
 
-/// Common home directory files to check
-pub const KNOWN_HOME_FILES: &[(&str, &str)] = &[
-    (".tmux.conf", "home/.tmux.conf"),
-    (".gitconfig", "home/.gitconfig"),
-    (".bashrc", "home/.bashrc"),
-    (".zshrc", "home/.zshrc"),
-    (".vimrc", "home/.vimrc"),
+/// Common home directory files to check (in ~/)
+/// These are backed up and symlinked individually
+pub const KNOWN_HOME_FILES: &[&str] = &[
+    ".tmux.conf",
+    ".gitconfig",
+    ".bashrc",
+    ".zshrc",
+    ".vimrc",
+    ".inputrc",
+    ".profile",
+    ".bash_profile",
+    ".zprofile",
+    ".zshenv",
 ];

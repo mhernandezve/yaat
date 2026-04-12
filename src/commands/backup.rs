@@ -21,17 +21,33 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
     let mut backed_up = 0;
     let mut skipped = 0;
 
-    // Backup config files
-    info!("Backing up config directory: {}", config_dir.display());
-    let (count, skip) = backup_config_files(&config_dir, &home, context, dry_run)?;
-    backed_up += count;
-    skipped += skip;
+    // Backup config directories (complete folders)
+    if !context.config.config_dirs.is_empty() {
+        info!("Backing up config directories...");
+        let (count, skip) = backup_config_dirs(&config_dir, context, dry_run)?;
+        backed_up += count;
+        skipped += skip;
+    }
 
-    // Backup home files (if tracked)
+    // Backup home files (individual files)
+    if !context.config.home_files.is_empty() {
+        info!("Backing up home files...");
+        let (count, skip) = backup_home_files(&home, context, dry_run)?;
+        backed_up += count;
+        skipped += skip;
+    }
+
+    // Also backup any tracked files that exist in the repo but might have been updated
     let tracked_home_files = get_tracked_home_files(context)?;
     if !tracked_home_files.is_empty() {
-        info!("Backing up tracked home files...");
+        info!("Checking tracked home files for updates...");
         for file in tracked_home_files {
+            // Skip if already in home_files list (already processed)
+            let file_name = file.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if context.config.is_home_file_managed(file_name) {
+                continue;
+            }
+
             if !file.exists() {
                 debug!("File does not exist, skipping: {}", file.display());
                 skipped += 1;
@@ -78,8 +94,86 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
     Ok(())
 }
 
-fn backup_config_files(
+fn backup_config_dirs(
     config_dir: &Path,
+    context: &mut CommandContext,
+    dry_run: bool,
+) -> Result<(usize, usize)> {
+    let mut backed_up = 0;
+    let mut skipped = 0;
+
+    for dir_name in &context.config.config_dirs {
+        // Skip comments and empty lines
+        if dir_name.starts_with('#') || dir_name.trim().is_empty() {
+            continue;
+        }
+
+        let full_path = config_dir.join(dir_name);
+
+        if !full_path.exists() {
+            debug!("Config directory does not exist: {}", full_path.display());
+            continue;
+        }
+
+        if !full_path.is_dir() {
+            warn!("Not a directory: {}", full_path.display());
+            continue;
+        }
+
+        // Backup entire directory
+        info!("Backing up config directory: {}", dir_name);
+
+        for entry in walkdir::WalkDir::new(&full_path)
+            .follow_links(false)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let system_path = entry.path();
+            if system_path.is_dir() {
+                continue;
+            }
+
+            // Skip symlinks
+            if system_path.is_symlink() {
+                warn_symlink(system_path);
+                skipped += 1;
+                continue;
+            }
+
+            // Convert to relative path
+            let repo_relative =
+                match system_to_repo_path(&system_path.to_path_buf(), &context.repo_path) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        debug!("Could not convert path: {} - {}", system_path.display(), e);
+                        skipped += 1;
+                        continue;
+                    }
+                };
+
+            // Check if excluded
+            if context
+                .config
+                .is_excluded(&repo_relative.to_string_lossy(), None)
+            {
+                debug!("Skipping excluded file: {}", system_path.display());
+                skipped += 1;
+                continue;
+            }
+
+            let target = context.repo_path.join(&repo_relative);
+            if backup_file(system_path, &target, dry_run)? {
+                backed_up += 1;
+            } else {
+                skipped += 1;
+            }
+        }
+    }
+
+    Ok((backed_up, skipped))
+}
+
+fn backup_home_files(
     home_dir: &Path,
     context: &mut CommandContext,
     dry_run: bool,
@@ -87,123 +181,52 @@ fn backup_config_files(
     let mut backed_up = 0;
     let mut skipped = 0;
 
-    // If include list is specified, only backup those directories
-    if !context.config.include.is_empty() {
-        info!("Using include list from yaat.yaml");
-
-        for included in &context.config.include {
-            // Skip comments and empty lines
-            if included.starts_with('#') || included.trim().is_empty() {
-                continue;
-            }
-
-            let full_path = if included.starts_with("config/") {
-                let subpath = included.strip_prefix("config/").unwrap();
-                config_dir.join(subpath)
-            } else if included.starts_with("home/") {
-                let subpath = included.strip_prefix("home/").unwrap();
-                home_dir.join(subpath)
-            } else {
-                warn!(
-                    "Invalid include path (must start with config/ or home/): {}",
-                    included
-                );
-                continue;
-            };
-
-            if !full_path.exists() {
-                debug!("Included path does not exist: {}", full_path.display());
-                continue;
-            }
-
-            if full_path.is_dir() {
-                // Backup entire directory
-                for entry in walkdir::WalkDir::new(&full_path)
-                    .follow_links(false)
-                    .into_iter()
-                    .filter_map(|e| e.ok())
-                {
-                    let system_path = entry.path();
-                    if system_path.is_dir() {
-                        continue;
-                    }
-
-                    // Skip symlinks
-                    if system_path.is_symlink() {
-                        warn_symlink(system_path);
-                        skipped += 1;
-                        continue;
-                    }
-
-                    // Convert to relative path
-                    let repo_relative =
-                        match system_to_repo_path(&system_path.to_path_buf(), &context.repo_path) {
-                            Ok(p) => p,
-                            Err(e) => {
-                                debug!("Could not convert path: {} - {}", system_path.display(), e);
-                                skipped += 1;
-                                continue;
-                            }
-                        };
-
-                    // Check if excluded
-                    if context
-                        .config
-                        .is_excluded(&repo_relative.to_string_lossy(), None)
-                    {
-                        debug!("Skipping excluded file: {}", system_path.display());
-                        skipped += 1;
-                        continue;
-                    }
-
-                    let target = context.repo_path.join(&repo_relative);
-                    if backup_file(system_path, &target, dry_run)? {
-                        backed_up += 1;
-                    } else {
-                        skipped += 1;
-                    }
-                }
-            } else {
-                // Backup single file
-                if full_path.is_symlink() {
-                    warn_symlink(&full_path);
-                    skipped += 1;
-                    continue;
-                }
-
-                let repo_relative = match system_to_repo_path(&full_path, &context.repo_path) {
-                    Ok(p) => p,
-                    Err(e) => {
-                        debug!("Could not convert path: {} - {}", full_path.display(), e);
-                        skipped += 1;
-                        continue;
-                    }
-                };
-
-                if context
-                    .config
-                    .is_excluded(&repo_relative.to_string_lossy(), None)
-                {
-                    skipped += 1;
-                    continue;
-                }
-
-                let target = context.repo_path.join(&repo_relative);
-                if backup_file(&full_path, &target, dry_run)? {
-                    backed_up += 1;
-                } else {
-                    skipped += 1;
-                }
-            }
+    for file_name in &context.config.home_files {
+        // Skip comments and empty lines
+        if file_name.starts_with('#') || file_name.trim().is_empty() {
+            continue;
         }
 
-        return Ok((backed_up, skipped));
+        let full_path = home_dir.join(file_name);
+
+        if !full_path.exists() {
+            debug!("Home file does not exist: {}", full_path.display());
+            continue;
+        }
+
+        if full_path.is_dir() {
+            warn!("Expected file but found directory: {}", full_path.display());
+            continue;
+        }
+
+        // Skip symlinks
+        if full_path.is_symlink() {
+            warn_symlink(&full_path);
+            skipped += 1;
+            continue;
+        }
+
+        // Convert to relative path (home/ filename)
+        let repo_relative = PathBuf::from("home").join(file_name);
+
+        // Check if excluded
+        if context
+            .config
+            .is_excluded(&repo_relative.to_string_lossy(), None)
+        {
+            skipped += 1;
+            continue;
+        }
+
+        let target = context.repo_path.join(&repo_relative);
+        if backup_file(&full_path, &target, dry_run)? {
+            backed_up += 1;
+        } else {
+            skipped += 1;
+        }
     }
 
-    // If include list is empty, show message and don't backup anything (Option C behavior)
-    info!("No configs specified in include list, nothing to backup");
-    info!("Edit yaat.yaml and add items to the include list");
-    Ok((0, 0))
+    Ok((backed_up, skipped))
 }
 
 fn warn_symlink(path: &Path) {
