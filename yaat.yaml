@@ -1,0 +1,49 @@
+# YAAT Configuration
+# This file configures how YAAT manages these dotfiles
+
+# Repository path (relative to home or absolute)
+repo_path: ~/.dotfiles
+
+# Config directories in ~/.config/ to manage
+# These are backed up as complete directories and symlinked as directory symlinks
+config_dirs:
+  - hypr
+  - waybar
+  - kitty
+  - fish
+  - nvim
+  - tmux
+  - mako
+  - walker
+  - alacritty
+  - ghostty
+
+# Individual files in ~/ to manage
+# These are backed up and symlinked individually
+home_files:
+  - .tmux.conf
+  - .gitconfig
+
+# Files/directories to exclude globally
+exclude:
+  - .git
+  - .gitignore
+  - yaat.yaml
+  - "*.tmp"
+  - "*.bak"
+  - "*.log"
+  - "*.backup"
+
+# Symlink settings
+symlink:
+  enabled: true
+  backup: true  # Backup existing files before creating symlinks
+
+# Host-specific configurations (optional)
+# hosts:
+#   desktop:
+#     exclude:
+#       - hypr/laptop-specific.conf
+#   laptop:
+#     exclude:
+#       - hypr/desktop-specific.conf
