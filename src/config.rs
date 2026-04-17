@@ -129,6 +129,7 @@ impl YaatConfig {
     }
 
     /// Get the repository path, expanding ~ to home directory
+    #[allow(dead_code)]
     pub fn expand_repo_path(&self) -> Result<PathBuf> {
         if self.repo_path.starts_with("~/") {
             let home = dirs::home_dir().context("Could not determine home directory")?;
@@ -163,6 +164,7 @@ impl YaatConfig {
     }
 
     /// Check if a config directory is managed
+    #[allow(dead_code)]
     pub fn is_config_dir_managed(&self, name: &str) -> bool {
         self.config_dirs
             .iter()

@@ -62,6 +62,7 @@ pub fn system_to_repo_path(system_path: &PathBuf, repo_path: &PathBuf) -> Result
 }
 
 /// Convert a repo-relative path to the corresponding system path
+#[allow(dead_code)]
 pub fn repo_to_system_path(repo_relative: &PathBuf, repo_path: &PathBuf) -> Result<PathBuf> {
     if repo_relative.starts_with("config/") {
         let config = config_dir()?;

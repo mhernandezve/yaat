@@ -175,12 +175,14 @@ Thumbs.db
     }
 
     /// Check if the working directory is clean
+    #[allow(dead_code)]
     pub fn is_clean(&self) -> Result<bool> {
         let statuses = self.status()?;
         Ok(statuses.is_empty())
     }
 
     /// Pull latest changes from remote
+    #[allow(dead_code)]
     pub fn pull(&self) -> Result<()> {
         // This is a simplified pull - in production you'd want proper merge handling
         warn!("Pull operation not fully implemented");
@@ -188,6 +190,7 @@ Thumbs.db
     }
 
     /// Push changes to remote
+    #[allow(dead_code)]
     pub fn push(&self) -> Result<()> {
         warn!("Push operation not fully implemented");
         Ok(())
