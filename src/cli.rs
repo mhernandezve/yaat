@@ -25,6 +25,10 @@ pub enum Commands {
         /// Clone from existing remote repository
         #[arg(short, long, value_name = "URL")]
         clone: Option<String>,
+
+        /// Ask about unknown config directories and home files
+        #[arg(long = "ask-unknown")]
+        ask_unknown: bool,
     },
 
     /// Add a file to the dotfiles repository

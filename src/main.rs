@@ -26,10 +26,14 @@ fn main() -> Result<()> {
         .init();
 
     match cli.command {
-        Commands::Init { path, clone } => {
+        Commands::Init {
+            path,
+            clone,
+            ask_unknown,
+        } => {
             // For init, resolve path directly without find_repo()
             let repo_path = resolve_init_path(path)?;
-            commands::init::execute(repo_path, clone)?;
+            commands::init::execute(repo_path, clone, ask_unknown)?;
         }
         other_command => {
             // For other commands, find existing repo
