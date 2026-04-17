@@ -25,10 +25,21 @@ pub enum Commands {
         /// Clone from existing remote repository
         #[arg(short, long, value_name = "URL")]
         clone: Option<String>,
+    },
+
+    /// Update existing dotfiles repository (detect new configs)
+    Update {
+        /// Specific repository path to update
+        #[arg(value_name = "PATH")]
+        path: Option<PathBuf>,
 
         /// Ask about unknown config directories and home files
-        #[arg(long = "ask-unknown")]
+        #[arg(short = 'a', long = "ask-unknown")]
         ask_unknown: bool,
+
+        /// Dry run - show what would be done without making changes
+        #[arg(short, long)]
+        dry_run: bool,
     },
 
     /// Add a file to the dotfiles repository

@@ -26,14 +26,18 @@ fn main() -> Result<()> {
         .init();
 
     match cli.command {
-        Commands::Init {
-            path,
-            clone,
-            ask_unknown,
-        } => {
+        Commands::Init { path, clone } => {
             // For init, resolve path directly without find_repo()
             let repo_path = resolve_init_path(path)?;
-            commands::init::execute(repo_path, clone, ask_unknown)?;
+            commands::init::execute(repo_path, clone)?;
+        }
+        Commands::Update {
+            path,
+            ask_unknown,
+            dry_run,
+        } => {
+            // Update doesn't need full context, just execute directly
+            commands::update::execute(path, ask_unknown, dry_run)?;
         }
         other_command => {
             // For other commands, find existing repo
@@ -55,7 +59,7 @@ fn main() -> Result<()> {
                 Commands::Status { verbose } => {
                     commands::status::execute(verbose, &mut context)?;
                 }
-                Commands::Init { .. } => unreachable!(),
+                Commands::Init { .. } | Commands::Update { .. } => unreachable!(),
             }
         }
     }

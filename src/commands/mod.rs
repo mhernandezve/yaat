@@ -3,6 +3,7 @@ pub mod backup;
 pub mod init;
 pub mod status;
 pub mod sync;
+pub mod update;
 
 use crate::config::YaatConfig;
 
