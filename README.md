@@ -3,11 +3,11 @@
 [![CI](https://github.com/mhernandezve/yaat/actions/workflows/ci.yml/badge.svg)](https://github.com/mhernandezve/yaat/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A modern, cross-platform dotfiles manager written in Rust. YAAT helps you maintain a single source of truth for your configuration files across multiple machines using Git.
+A modern dotfiles manager written in Rust. YAAT helps you maintain a single source of truth for your configuration files across multiple machines using Git.
 
 ## Features
 
-- 🖥️ **Cross-platform**: Works on Linux, macOS, and Windows
+- 🖥️ **Unix support**: Works on Linux and macOS
 - 🔗 **Git-based**: Version control for your configurations
 - 🎯 **Host-specific configs**: Different settings per machine
 - 📋 **Include list**: Selective backup (only what you want)
@@ -380,10 +380,6 @@ include:
 ```
 
 Or run `yaat init` again to auto-detect.
-
-### Symlink Issues on Windows
-
-Windows requires Developer Mode or Administrator privileges to create symlinks. If symlinks fail, YAAT will fall back to copying files.
 
 ### Package Installation
 

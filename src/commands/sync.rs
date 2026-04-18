@@ -131,28 +131,13 @@ fn sync_config_dirs(context: &CommandContext, dry_run: bool) -> Result<(usize, u
                     repo_dir.display()
                 );
             } else {
-                #[cfg(unix)]
-                {
-                    std::os::unix::fs::symlink(&repo_dir, &system_dir).with_context(|| {
-                        format!(
-                            "Failed to create directory symlink: {} -> {}",
-                            system_dir.display(),
-                            repo_dir.display()
-                        )
-                    })?;
-                }
-                #[cfg(windows)]
-                {
-                    std::os::windows::fs::symlink_dir(&repo_dir, &system_dir).with_context(
-                        || {
-                            format!(
-                                "Failed to create directory symlink: {} -> {}",
-                                system_dir.display(),
-                                repo_dir.display()
-                            )
-                        },
-                    )?;
-                }
+                std::os::unix::fs::symlink(&repo_dir, &system_dir).with_context(|| {
+                    format!(
+                        "Failed to create directory symlink: {} -> {}",
+                        system_dir.display(),
+                        repo_dir.display()
+                    )
+                })?;
                 info!(
                     "Created directory symlink: {} -> {}",
                     system_dir.display(),
@@ -258,28 +243,13 @@ fn sync_home_files(context: &CommandContext, dry_run: bool) -> Result<(usize, us
                     repo_file.display()
                 );
             } else {
-                #[cfg(unix)]
-                {
-                    std::os::unix::fs::symlink(&repo_file, &system_file).with_context(|| {
-                        format!(
-                            "Failed to create symlink: {} -> {}",
-                            system_file.display(),
-                            repo_file.display()
-                        )
-                    })?;
-                }
-                #[cfg(windows)]
-                {
-                    std::os::windows::fs::symlink_file(&repo_file, &system_file).with_context(
-                        || {
-                            format!(
-                                "Failed to create file symlink: {} -> {}",
-                                system_file.display(),
-                                repo_file.display()
-                            )
-                        },
-                    )?;
-                }
+                std::os::unix::fs::symlink(&repo_file, &system_file).with_context(|| {
+                    format!(
+                        "Failed to create symlink: {} -> {}",
+                        system_file.display(),
+                        repo_file.display()
+                    )
+                })?;
                 info!(
                     "Created symlink: {} -> {}",
                     system_file.display(),
@@ -409,30 +379,13 @@ fn sync_host_overrides(
                     repo_file_path.display()
                 );
             } else {
-                #[cfg(unix)]
-                {
-                    std::os::unix::fs::symlink(repo_file_path, &target_path).with_context(
-                        || {
-                            format!(
-                                "Failed to create symlink: {} -> {}",
-                                target_path.display(),
-                                repo_file_path.display()
-                            )
-                        },
-                    )?;
-                }
-                #[cfg(windows)]
-                {
-                    std::os::windows::fs::symlink_file(repo_file_path, &target_path).with_context(
-                        || {
-                            format!(
-                                "Failed to create file symlink: {} -> {}",
-                                target_path.display(),
-                                repo_file_path.display()
-                            )
-                        },
-                    )?;
-                }
+                std::os::unix::fs::symlink(repo_file_path, &target_path).with_context(|| {
+                    format!(
+                        "Failed to create symlink: {} -> {}",
+                        target_path.display(),
+                        repo_file_path.display()
+                    )
+                })?;
                 info!(
                     "Created symlink: {} -> {}",
                     target_path.display(),
