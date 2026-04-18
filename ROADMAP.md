@@ -1,18 +1,6 @@
 # YAAT Roadmap / Pending Tasks
 
-## Decisiones de diseño tomadas
-
-| Decisión | Elección |
-|---|---|
-| Mecanismo de sync | Solo symlinks |
-| Cifrado | age (crate, sin binario externo) |
-| Encrypted en manifest | Sección `encrypted`, archivos en carpeta `encrypted/` |
-| Hostname | Identificador lógico de rol, no hostname real |
-| Licencia | MIT |
-| Scripts de instalación | Repo separado |
-| Bootstrap | Tercer repo, consume scripts remotamente |
-| TUI | Subcomando `yaat tui`, no binario separado |
-| Plataformas | Unix only (Linux, macOS) |
+See [DESIGN_DECISIONS.md](./DESIGN_DECISIONS.md) for architectural decisions and rationale.
 
 ---
 
