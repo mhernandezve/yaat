@@ -10,36 +10,32 @@ A modern dotfiles manager written in Rust. YAAT helps you maintain a single sour
 - 🖥️ **Unix support**: Works on Linux and macOS
 - 🔗 **Git-based**: Version control for your configurations
 - 🎯 **Host-specific configs**: Different settings per machine
-- 📋 **Include list**: Selective backup (only what you want)
-- 🔍 **Auto-detection**: Automatically finds your dotfiles during init
+- 📁 **Smart structure**: Separate `config_dirs` and `home_files`
+- 🔍 **Auto-detection**: Automatically finds your dotfiles during init and update
+- 🔄 **Update command**: Detect and add new configs as you install apps
+- ❓ **Interactive mode**: Ask about unknown configs with `--ask-unknown`
+- 🚫 **Smart ignore**: `.yaatignore` to persist skip decisions
 - 🔗 **Symlink or copy**: Choose how to sync your files
 - 🛡️ **Backup before sync**: Automatic backups prevent data loss
 - 📝 **Dry-run mode**: Preview changes before applying
 - 🔍 **Status tracking**: See what's synced and what's pending
-- 📦 **Package management**: Optional scripts for migrating installed packages
 
 ## Installation
 
 ### From Source (requires Rust)
 
 ```bash
-# Clone the repository
+# Install directly from GitHub
+cargo install --git https://github.com/mhernandezve/yaat
+
+# Or clone and build manually
 git clone https://github.com/mhernandezve/yaat.git
 cd yaat
-
-# Build release binary
 cargo build --release
 
-# Install to your system (optional)
-cargo install --path .
-
-# Or use directly
+# Use directly
 ./target/release/yaat --help
 ```
-
-### Pre-built Binaries
-
-Download from [GitHub Releases](https://github.com/mhernandezve/yaat/releases) (coming soon).
 
 ## Quick Start
 
@@ -57,37 +53,63 @@ export YAAT_REPO=~/my-dotfiles
 yaat init
 ```
 
-YAAT will auto-detect your configuration files and create an `include` list.
+**Note**: `yaat init` only creates new repositories. If the repository already exists, use `yaat update` instead.
+
+YAAT will auto-detect your configuration files and create `config_dirs` and `home_files` lists.
 
 This creates:
 ```
 ~/.dotfiles/
-├── config/          # Files that go to ~/.config
-├── home/            # Files that go to ~
+├── config/          # Directories that go to ~/.config (symlinked as directories)
+├── home/            # Files that go to ~ (symlinked individually)
 ├── hosts/           # Host-specific configurations
-├── packages/        # Package lists (optional)
-├── scripts/         # Helper scripts (optional)
 ├── yaat.yaml        # YAAT configuration
-├── .git/            # Git repository
-└── .gitignore       # Default ignores
+├── .gitignore       # Default ignores
+└── .yaatignore      # Your personal ignore list (created with --ask-unknown)
 ```
 
-### 2. Review and Customize
+### 2. Update to Detect All Configs
+
+For the first time, run with `--ask-unknown` to interactively discover all your configs:
+
+```bash
+# Detect known configs automatically + ask about unknown ones
+yaat update --ask-unknown
+
+# Preview what would be added (dry-run)
+yaat update --ask-unknown --dry-run
+```
+
+This will prompt you for each unknown config:
+```
+? aether (15 files) - Add to config_dirs? [y/N/i] y
+  + Added: aether
+? chromium (1247 files) - Add to config_dirs? [y/N/i] i
+  + Added to .yaatignore
+```
+
+### 3. Review and Customize
 
 Edit `yaat.yaml` to customize what gets backed up:
 
 ```yaml
 repo_path: ~/.dotfiles
 
-# Auto-detected configs (edit as needed)
-include:
-  - config/hypr/          # Window manager
-  - config/waybar/        # Status bar
-  - config/fish/          # Shell
-  - config/kitty/         # Terminal
-  - config/nvim/          # Editor
+# Config directories in ~/.config/ (backed up as complete directories)
+config_dirs:
+  - hypr          # Window manager
+  - waybar        # Status bar
+  - fish          # Shell
+  - kitty         # Terminal
+  - nvim          # Editor
   # Remove items you don't want to track
   # Add items that weren't auto-detected
+
+# Individual files in ~/ (backed up and symlinked individually)
+home_files:
+  - .bashrc
+  - .gitconfig
+  - .tmux.conf
 
 exclude:
   - .git
@@ -100,7 +122,7 @@ symlink:
   backup: true
 ```
 
-### 3. Backup Current System
+### 4. Backup Current System
 
 ```bash
 # Preview what will be backed up
@@ -109,10 +131,10 @@ yaat backup --dry-run
 # Backup current configs to repository
 yaat backup
 
-# This only backs up files/directories in your include list
+# This backs up all files in config_dirs and home_files
 ```
 
-### 4. Sync to Another Machine
+### 5. Sync to Another Machine
 
 ```bash
 # Clone your dotfiles
@@ -129,7 +151,7 @@ yaat sync
 yaat sync --host desktop
 ```
 
-### 5. Check Status
+### 6. Check Status
 
 ```bash
 # Quick overview
@@ -137,6 +159,65 @@ yaat status
 
 # Detailed status with tracked files
 yaat status --verbose
+```
+
+## Updating Your Repository
+
+As you install new applications, YAAT can automatically detect and add their configurations.
+
+### Detect New Known Configs
+
+```bash
+# Check for new configs from KNOWN_CONFIGS list and add them automatically
+yaat update
+
+# Example output:
+# Detected 2 new known config directories
+#   + btop
+#   + ghostty
+```
+
+### Interactive Discovery
+
+```bash
+# Also ask about unknown configs interactively
+yaat update --ask-unknown
+
+# Preview without making changes
+yaat update --ask-unknown --dry-run
+```
+
+### The .yaatignore File
+
+When using `--ask-unknown`, you can press `i` to ignore a config permanently. These are stored in `.yaatignore`:
+
+```bash
+# ~/.dotfiles/.yaatignore
+# Configs that won't be prompted in --ask-unknown
+
+chromium
+configstore
+dconf
+```
+
+### Workflow Example
+
+```bash
+# Day 1: Initial setup
+yaat init ~/.dotfiles
+yaat update --ask-unknown  # Discover and add all your configs
+yaat backup                # Copy everything to the repo
+
+# Day 2: Install a new app (btop)
+sudo pacman -S btop
+
+# Day 3: YAAT automatically detects it
+yaat update
+# Output: "Detected 1 new known config: + btop"
+
+# Day 4: Install something unknown
+yaat update --ask-unknown
+# ? new-app (12 files) - Add to config_dirs? [y/N/i]
 ```
 
 ## Configuration
@@ -150,25 +231,33 @@ repo_path: ~/.dotfiles
 # Default hostname for syncing
 default_host: my-laptop
 
-# Files/directories to INCLUDE (if set, only these are backed up)
-# Auto-populated during 'yaat init', edit as needed
-include:
-  - config/hypr/
-  - config/waybar/
-  - config/fish/
-  - config/kitty/
-  - config/nvim/
-  - home/.bashrc
+# Config directories in ~/.config/ to manage
+# These are backed up as complete directories and symlinked as directory symlinks
+config_dirs:
+  - hypr
+  - waybar
+  - fish
+  - kitty
+  - nvim
+  - tmux
+  - mako
 
-# Files/directories to exclude (applied within included paths)
+# Individual files in ~/ to manage
+# These are backed up and symlinked individually
+home_files:
+  - .bashrc
+  - .zshrc
+  - .gitconfig
+  - .tmux.conf
+
+# Files/directories to exclude globally
 exclude:
   - .git
   - .gitignore
   - yaat.yaml
-  - node_modules
-  - target
-  - .cache
   - "*.tmp"
+  - "*.bak"
+  - .cache
 
 # Symlink settings
 symlink:
@@ -178,19 +267,16 @@ symlink:
 # Host-specific configurations
 hosts:
   desktop:
-    files: []
-    exclude: []
-    env: {}
-  
+    exclude:
+      - hypr/laptop-specific.conf
   laptop:
-    files: []
-    exclude: []
-    env: {}
+    exclude:
+      - hypr/desktop-specific.conf
 ```
 
 ### Auto-Detected Configurations
 
-During `yaat init`, YAAT automatically detects these common configurations:
+During `yaat init` and `yaat update`, YAAT automatically detects these common configurations:
 
 - **Desktop**: hypr, waybar, walker, mako, omarchy
 - **Terminals**: kitty, alacritty, ghostty, foot, wezterm
@@ -206,14 +292,14 @@ During `yaat init`, YAAT automatically detects these common configurations:
 
 ```
 ~/.dotfiles/
-├── config/              # Maps to ~/.config
+├── config/              # Maps to ~/.config (directories symlinked as a whole)
 │   ├── kitty/
 │   │   └── kitty.conf
 │   ├── nvim/
 │   │   └── init.lua
 │   └── waybar/
 │       └── config
-├── home/                # Maps to ~
+├── home/                # Maps to ~ (individual files symlinked)
 │   ├── .zshrc
 │   ├── .bashrc
 │   └── .gitconfig
@@ -225,26 +311,29 @@ During `yaat init`, YAAT automatically detects these common configurations:
 └── yaat.yaml
 ```
 
+### Key Differences from Other Tools
+
+| Feature | YAAT | Others |
+|---------|------|--------|
+| Config structure | `config_dirs` + `home_files` | Flat or mixed |
+| Unknown configs | Interactive `--ask-unknown` | Manual only |
+| Update workflow | `yaat update` command | Re-init or manual |
+| Ignore list | `.yaatignore` file | Usually none |
+
 ### Sync Process
 
 1. **From Repo to System** (`yaat sync`):
    - Reads files from `~/.dotfiles/config/` and `~/.dotfiles/home/`
+   - `config_dirs` are symlinked as **directories** (`~/.config/hypr` → `~/.dotfiles/config/hypr`)
+   - `home_files` are symlinked as **individual files** (`~/.bashrc` → `~/.dotfiles/home/.bashrc`)
    - Applies host-specific overrides from `~/.dotfiles/hosts/<hostname>/`
    - Backs up existing files (if enabled)
-   - Creates symlinks or copies files to system locations
 
 2. **From System to Repo** (`yaat backup`):
-   - Only processes files/directories in `include` list
+   - Processes files/directories in `config_dirs` and `home_files`
    - Skips symlinks (with warning)
    - Copies files back to repository
    - Creates a git commit
-
-### Include List Behavior
-
-- **If `include` is populated**: Only those files/directories are backed up
-- **If `include` is empty**: Shows "Nothing to backup" message
-- **Symlinks**: Always skipped (to avoid broken links)
-- **Works with `exclude`**: You can include a directory but exclude specific files
 
 ## Helper Scripts
 
@@ -279,36 +368,75 @@ See [dotfiles-alt](https://github.com/mhernandezve/dotfiles-alt) for a complete 
 - `HOME`: Used to resolve `~` in paths
 - `XDG_CONFIG_HOME`: Config directory (default: `~/.config`)
 
-## Advanced Usage
+## Command Reference
 
-### Verbose Mode
+### `yaat init [PATH]`
+Initialize a new dotfiles repository.
+- Creates directory structure
+- Auto-detects known configs
+- Fails if repository already exists
 
-Add `--verbose` or `-v` to any command for detailed output:
+### `yaat update [OPTIONS] [PATH]`
+Update an existing repository.
+- Detects new known configs automatically
+- `--ask-unknown`: Interactive prompt for unknown configs
+- `--dry-run`: Preview changes without applying
+
+### `yaat backup [OPTIONS]`
+Backup system configs to repository.
+- `--dry-run`: Preview what will be backed up
+- `--host HOST`: Backup for specific host
+
+### `yaat sync [OPTIONS]`
+Sync repository configs to system.
+- `--dry-run`: Preview what will be synced
+- `--host HOST`: Sync for specific host
+
+### `yaat status [OPTIONS]`
+Show repository status.
+- `--verbose`: Detailed status with file list
+
+## Troubleshooting
+
+### "Could not find YAAT repository"
+
+Run `yaat init` to create a repository, or set `YAAT_REPO` environment variable:
 
 ```bash
-yaat --verbose sync
-yaat init --verbose ~/my-dotfiles
+export YAAT_REPO=/path/to/your/dotfiles
 ```
 
-### Dry Run
+### "YAAT repository already exists"
 
-Preview changes without making them:
+`yaat init` can only create new repositories. To update an existing repository:
 
 ```bash
-yaat sync --dry-run
-yaat backup --dry-run
+# Update existing repo (detects new known configs)
+yaat update
+
+# Update with interactive discovery
+yaat update --ask-unknown
 ```
 
-### Working with YAAT_REPO
+### "Nothing to backup"
+
+Your `config_dirs` and `home_files` lists in `yaat.yaml` are empty. Run:
 
 ```bash
-# Set temporarily for one command
-YAAT_REPO=~/work-dotfiles yaat backup
-
-# Or export for the session
-export YAAT_REPO=~/work-dotfiles
-yaat sync
+yaat update --ask-unknown
 ```
+
+Or edit `yaat.yaml` manually to add configurations.
+
+### Symlink Issues
+
+YAAT requires Unix-based system (Linux or macOS). On Linux, ensure you have write permissions to `~/.config` and `~`.
+
+### Package Installation
+
+For package management scripts, ensure you have the appropriate helper:
+- **Arch**: `yay` or `paru` for AUR packages
+- **Debian/Ubuntu**: Standard `apt`
 
 ## Development
 
@@ -352,40 +480,13 @@ src/
 ├── known_configs.rs  # Auto-detection whitelist
 ├── platform.rs       # Cross-platform utilities
 └── commands/
-    ├── init.rs       # Initialize repository
+    ├── init.rs       # Initialize repository (new only)
+    ├── update.rs     # Update existing repository
     ├── add.rs        # Add files to tracking
     ├── sync.rs       # Sync to system
     ├── backup.rs     # Backup to repository
     └── status.rs     # Show status
 ```
-
-## Troubleshooting
-
-### "Could not find YAAT repository"
-
-Run `yaat init` to create a repository, or set `YAAT_REPO` environment variable:
-
-```bash
-export YAAT_REPO=/path/to/your/dotfiles
-```
-
-### "No configs in include list, nothing to backup"
-
-Your `include` list in `yaat.yaml` is empty. Add some configurations:
-
-```yaml
-include:
-  - config/hypr/
-  - config/fish/
-```
-
-Or run `yaat init` again to auto-detect.
-
-### Package Installation
-
-For package management scripts, ensure you have the appropriate helper:
-- **Arch**: `yay` or `paru` for AUR packages
-- **Debian/Ubuntu**: Standard `apt`
 
 ## Related Projects
 
