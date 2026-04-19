@@ -1,0 +1,42 @@
+extends:
+  - '@commitlint/config-conventional'
+
+rules:
+  # Valid types from DESIGN_DECISIONS.md
+  type-enum:
+    - 2
+    - always
+    - - feat
+      - fix
+      - chore
+      - docs
+      - style
+      - refactor
+      - perf
+      - test
+      - build
+      - ci
+      - revert
+
+  # Valid scopes from DESIGN_DECISIONS.md
+  scope-enum:
+    - 2
+    - always
+    - - cli
+      - sync
+      - manifest
+      - encrypted
+      - ci
+      - deps
+      - bootstrap
+
+  # Require scope (we always use it)
+  scope-empty:
+    - 2
+    - never
+
+  # Subject case - lowercase
+  subject-case:
+    - 2
+    - always
+    - lower-case
