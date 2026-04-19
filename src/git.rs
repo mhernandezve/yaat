@@ -80,7 +80,10 @@ Thumbs.db
             .context("Failed to get repository index")?;
 
         let repo_path = self.path();
-        let relative_path = path.strip_prefix(&repo_path).with_context(|| {
+        // Canonicalize the path to resolve symlinks (e.g., /var -> /private/var on macOS)
+        let canonical_path = std::fs::canonicalize(path)
+            .with_context(|| format!("Failed to canonicalize path: {}", path.display()))?;
+        let relative_path = canonical_path.strip_prefix(&repo_path).with_context(|| {
             format!(
                 "Path {} is not within repository {}",
                 path.display(),

@@ -44,19 +44,26 @@ pub fn system_to_repo_path(system_path: &PathBuf, repo_path: &PathBuf) -> Result
     let config = config_dir()?;
     let home = dirs::home_dir().context("Could not determine home directory")?;
 
+    // Canonicalize paths to resolve symlinks (e.g., /var -> /private/var on macOS)
+    let canonical_system =
+        std::fs::canonicalize(system_path).unwrap_or_else(|_| system_path.clone());
+    let canonical_config = std::fs::canonicalize(&config).unwrap_or_else(|_| config.clone());
+    let canonical_home = std::fs::canonicalize(&home).unwrap_or_else(|_| home.clone());
+    let canonical_repo = std::fs::canonicalize(repo_path).unwrap_or_else(|_| repo_path.clone());
+
     // Check if it's in ~/.config
-    if let Ok(relative) = system_path.strip_prefix(&config) {
+    if let Ok(relative) = canonical_system.strip_prefix(&canonical_config) {
         return Ok(PathBuf::from("config").join(relative));
     }
 
     // Check if it's directly in home
-    if let Ok(relative) = system_path.strip_prefix(&home) {
+    if let Ok(relative) = canonical_system.strip_prefix(&canonical_home) {
         return Ok(PathBuf::from("home").join(relative));
     }
 
     // Otherwise, use absolute path relative to repo
-    let relative = system_path
-        .strip_prefix(repo_path)
+    let relative = canonical_system
+        .strip_prefix(&canonical_repo)
         .map_err(|_| anyhow::anyhow!("Path is not within home, config, or repo directories"))?;
     Ok(relative.to_path_buf())
 }
