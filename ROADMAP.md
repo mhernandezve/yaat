@@ -38,7 +38,7 @@ _All immediate tasks completed. Moving to v0.1 CI/Tooling._
 - [x] Configure **Release Please** for automated versioning
   - `release-type: rust`
   - Generates `CHANGELOG.md` and updates version in `Cargo.toml`
-- [ ] Configure **cargo-dist** for release workflow
+- [x] Configure **cargo-dist** for release workflow
   - Targets: `x86_64-linux`, `aarch64-linux`, `x86_64-macos`, `aarch64-macos`
   - Generates installer script for bootstrap usage
 

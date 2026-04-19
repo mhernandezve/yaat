@@ -45,3 +45,26 @@ tempfile = "3.10"
 opt-level = 3
 lto = true
 strip = true
+
+# cargo-dist configuration for building and distributing binaries
+# See: https://opensource.axo.dev/cargo-dist/
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI
+cargo-dist-version = "0.28.0"
+# CI backends to support
+ci = ["github"]
+# Target platforms to build for
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+]
+# The archive format for non-windows builds
+tar-unix-archive = "tar.gz"
+# Publish jobs to run in CI
+pr-run-mode = "plan"
+# Path that installers should place binaries in
+install-path = "~/.local/bin/"
+# Whether to enable GitHub Attestations
+github-attestations = true

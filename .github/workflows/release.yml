@@ -1,0 +1,127 @@
+# This workflow runs cargo-dist to build and distribute binaries
+# It is triggered by Release Please when a release is published
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Run 'cargo dist plan' (or host) to determine what tasks we need to do
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      val: ${{ steps.plan.outputs.manifest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install cargo-dist
+        uses: axodotdev/cargo-dist@v0.28.0
+      - id: plan
+        run: |
+          cargo dist plan ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} --output-format=json > dist-manifest.json
+          echo "manifest=$(cat dist-manifest.json)" >> "$GITHUB_OUTPUT"
+      - name: "Upload dist-manifest.json"
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-plan
+          path: dist-manifest.json
+
+  # Build and upload all artifacts for each target platform
+  build-local-artifacts:
+    name: build-local-artifacts (${{ join(matrix.targets, ', ') }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - targets: [x86_64-unknown-linux-gnu]
+            runner: ubuntu-20.04
+          - targets: [aarch64-unknown-linux-gnu]
+            runner: ubuntu-20.04
+          - targets: [x86_64-apple-darwin]
+            runner: macos-13
+          - targets: [aarch64-apple-darwin]
+            runner: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install cargo-dist
+        uses: axodotdev/cargo-dist@v0.28.0
+      - name: Build artifacts
+        run: |
+          cargo dist build ${{ needs.plan.outputs.val && '--artifacts=global' || '' }} \
+            ${{ matrix.targets && format('--target={0}', join(matrix.targets, ',')) || '' }} \
+            ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} \
+            --output-format=json \
+            > dist-manifest.json
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-build-local
+          path: |
+            dist-manifest.json
+            target/dist/
+
+  # Build and upload all global artifacts
+  build-global-artifacts:
+    needs: [plan, build-local-artifacts]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install cargo-dist
+        uses: axodotdev/cargo-dist@v0.28.0
+      - name: Fetch local artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: artifacts-*
+          path: target/dist/
+          merge-multiple: true
+      - name: Build global artifacts
+        run: |
+          cargo dist build ${{ needs.plan.outputs.val && '--artifacts=global' || '' }} \
+            ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} \
+            --output-format=json \
+            > dist-manifest.json
+      - name: "Upload artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-build-global
+          path: |
+            dist-manifest.json
+            target/dist/
+
+  # Publish the release
+  publish-release:
+    needs: [plan, build-global-artifacts]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install cargo-dist
+        uses: axodotdev/cargo-dist@v0.28.0
+      - name: Fetch artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: artifacts-*
+          path: target/dist/
+          merge-multiple: true
+      - name: Publish release
+        run: |
+          cargo dist host ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} \
+            --steps=upload,release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
