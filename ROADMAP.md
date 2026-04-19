@@ -11,6 +11,10 @@ See [DESIGN_DECISIONS.md](./DESIGN_DECISIONS.md) for architectural decisions and
 - [x] Add `yaat update` command with `--ask-unknown` flag
 - [x] Implement `.yaatignore` support
 - [x] Separate `config_dirs` and `home_files` structure
+- [x] Add MIT `LICENSE` to repo
+- [x] Verify `license = "MIT"` in `Cargo.toml`
+- [x] Remove Windows from CI matrix
+- [x] Rename `master` branch to `main`
 
 ---
 
@@ -18,9 +22,12 @@ See [DESIGN_DECISIONS.md](./DESIGN_DECISIONS.md) for architectural decisions and
 
 ### Immediate (no code)
 
-- [ ] Add MIT `LICENSE` to repo
-- [ ] Add `license = "MIT"` to `Cargo.toml`
-- [ ] Remove Windows from CI matrix (`os: [ubuntu-latest, macos-latest]`)
+- [x] ~~Add MIT `LICENSE` to repo~~
+- [x] ~~Add `license = "MIT"` to `Cargo.toml`~~
+- [x] ~~Remove Windows from CI matrix (`os: [ubuntu-latest, macos-latest]`)~~
+- [x] ~~Rename `master` branch to `main`~~
+
+_All immediate tasks completed. Moving to v0.1 CI/Tooling._
 
 ### CI / Tooling
 
