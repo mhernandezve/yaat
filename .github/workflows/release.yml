@@ -22,10 +22,12 @@ jobs:
         with:
           submodules: recursive
       - name: Install cargo-dist
-        uses: axodotdev/cargo-dist@v0.28.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+          cargo-dist --version
       - id: plan
         run: |
-          cargo dist plan ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} --output-format=json > dist-manifest.json
+          cargo-dist plan ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} --output-format=json > dist-manifest.json
           echo "manifest=$(cat dist-manifest.json)" >> "$GITHUB_OUTPUT"
       - name: "Upload dist-manifest.json"
         uses: actions/upload-artifact@v4
@@ -37,35 +39,52 @@ jobs:
   build-local-artifacts:
     name: build-local-artifacts (${{ join(matrix.targets, ', ') }})
     runs-on: ${{ matrix.runner }}
+    needs: [plan]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - targets: [x86_64-unknown-linux-gnu]
+          - targets: x86_64-unknown-linux-gnu
             runner: ubuntu-20.04
-          - targets: [aarch64-unknown-linux-gnu]
+          - targets: aarch64-unknown-linux-gnu
             runner: ubuntu-20.04
-          - targets: [x86_64-apple-darwin]
+          - targets: x86_64-apple-darwin
             runner: macos-13
-          - targets: [aarch64-apple-darwin]
+          - targets: aarch64-apple-darwin
             runner: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
       - name: Install cargo-dist
-        uses: axodotdev/cargo-dist@v0.28.0
+        shell: bash
+        run: |
+          if [[ "${{ matrix.runner }}" == ubuntu* ]]; then
+            curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+          else
+            curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-apple-darwin.tar.gz | tar -xz -C /usr/local/bin
+          fi
+          cargo-dist --version
+      - name: Install cross-compilation tools
+        if: matrix.targets == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
       - name: Build artifacts
         run: |
-          cargo dist build ${{ needs.plan.outputs.val && '--artifacts=global' || '' }} \
-            ${{ matrix.targets && format('--target={0}', join(matrix.targets, ',')) || '' }} \
+          cargo-dist build \
+            --target=${{ matrix.targets }} \
             ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} \
             --output-format=json \
             > dist-manifest.json
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-build-local
+          name: artifacts-${{ matrix.targets }}
           path: |
             dist-manifest.json
             target/dist/
@@ -79,7 +98,9 @@ jobs:
         with:
           submodules: recursive
       - name: Install cargo-dist
-        uses: axodotdev/cargo-dist@v0.28.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+          cargo-dist --version
       - name: Fetch local artifacts
         uses: actions/download-artifact@v4
         with:
@@ -88,14 +109,14 @@ jobs:
           merge-multiple: true
       - name: Build global artifacts
         run: |
-          cargo dist build ${{ needs.plan.outputs.val && '--artifacts=global' || '' }} \
+          cargo-dist build --artifacts=global \
             ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} \
             --output-format=json \
             > dist-manifest.json
       - name: "Upload artifacts"
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-build-global
+          name: artifacts-global
           path: |
             dist-manifest.json
             target/dist/
@@ -112,7 +133,9 @@ jobs:
         with:
           submodules: recursive
       - name: Install cargo-dist
-        uses: axodotdev/cargo-dist@v0.28.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+          cargo-dist --version
       - name: Fetch artifacts
         uses: actions/download-artifact@v4
         with:
@@ -121,7 +144,7 @@ jobs:
           merge-multiple: true
       - name: Publish release
         run: |
-          cargo dist host ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} \
+          cargo-dist host ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} \
             --steps=upload,release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
