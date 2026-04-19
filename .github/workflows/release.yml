@@ -23,9 +23,8 @@ jobs:
           submodules: recursive
       - name: Install cargo-dist
         run: |
-          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.xz | tar -xJ
-          mv cargo-dist /usr/local/bin/
-          cargo-dist --version
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-installer.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - id: plan
         run: |
           cargo-dist plan ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} --output-format=json > dist-manifest.json
@@ -64,14 +63,8 @@ jobs:
       - name: Install cargo-dist
         shell: bash
         run: |
-          if [[ "${{ matrix.runner }}" == ubuntu* ]]; then
-            curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.xz | tar -xJ
-            mv cargo-dist /usr/local/bin/
-          else
-            curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-apple-darwin.tar.xz | tar -xJ
-            mv cargo-dist /usr/local/bin/
-          fi
-          cargo-dist --version
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-installer.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Install cross-compilation tools
         if: matrix.targets == 'aarch64-unknown-linux-gnu'
         run: |
@@ -102,9 +95,8 @@ jobs:
           submodules: recursive
       - name: Install cargo-dist
         run: |
-          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.xz | tar -xJ
-          mv cargo-dist /usr/local/bin/
-          cargo-dist --version
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-installer.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Fetch local artifacts
         uses: actions/download-artifact@v4
         with:
@@ -138,9 +130,8 @@ jobs:
           submodules: recursive
       - name: Install cargo-dist
         run: |
-          curl --proto '=https' --tlsv1.2 -fsSL https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-x86_64-unknown-linux-gnu.tar.xz | tar -xJ
-          mv cargo-dist /usr/local/bin/
-          cargo-dist --version
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.28.0/cargo-dist-installer.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Fetch artifacts
         uses: actions/download-artifact@v4
         with:
