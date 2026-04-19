@@ -46,6 +46,12 @@ opt-level = 3
 lto = true
 strip = true
 
+[profile.dist]
+inherits = "release"
+opt-level = 3
+lto = true
+strip = true
+
 # cargo-dist configuration for building and distributing binaries
 # See: https://opensource.axo.dev/cargo-dist/
 [workspace.metadata.dist]
