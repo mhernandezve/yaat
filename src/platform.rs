@@ -10,9 +10,16 @@ pub fn default_repo_path() -> Result<PathBuf> {
 }
 
 /// Get the configuration directory path
-/// On Unix: ~/.config
+/// On Unix: $XDG_CONFIG_HOME or ~/.config
 /// On Windows: %APPDATA%
 pub fn config_dir() -> Result<PathBuf> {
+    // Check XDG_CONFIG_HOME first (respects user override on all platforms)
+    if let Ok(xdg_config) = std::env::var("XDG_CONFIG_HOME") {
+        if !xdg_config.is_empty() {
+            return Ok(PathBuf::from(xdg_config));
+        }
+    }
+    // Fall back to platform default
     dirs::config_dir().context("Could not determine config directory")
 }
 
