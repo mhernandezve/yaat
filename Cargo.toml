@@ -68,3 +68,5 @@ pr-run-mode = "plan"
 install-path = "~/.local/bin/"
 # Whether to enable GitHub Attestations
 github-attestations = true
+# Allow dirty CI configuration (for custom runner versions)
+allow-dirty = ["ci"]
