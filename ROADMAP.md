@@ -35,7 +35,7 @@ _All immediate tasks completed. Moving to v0.1 CI/Tooling._
 - [x] Configure **lefthook** for local conventional commits
   - Validation via regex in `lefthook.yml`, no Node dependency
 - [x] Add **commitlint** job to CI (`wagoid/commitlint-github-action`)
-- [ ] Configure **Release Please** for automated versioning
+- [x] Configure **Release Please** for automated versioning
   - `release-type: rust`
   - Generates `CHANGELOG.md` and updates version in `Cargo.toml`
 - [ ] Configure **cargo-dist** for release workflow
