@@ -501,11 +501,42 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Conventional Commits
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/). Format: `type(scope): description`
+
+**Types:** `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `revert`
+
+**Scopes:** `cli`, `sync`, `manifest`, `encrypted`, `ci`, `deps`, `bootstrap`
+
+Examples:
+```
+feat(cli): add update command
+fix(sync): resolve symlink conflict on macOS
+chore(ci): add release-please workflow
+```
+
+### Setup
+
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Clone your fork (`git clone https://github.com/YOUR_USERNAME/yaat.git`)
+3. Install lefthook for commit validation:
+   ```bash
+   # macOS/Linux via Homebrew
+   brew install lefthook
+
+   # Or download binary directly
+   curl -fsSL https://github.com/evilmartians/lefthook/releases/latest/download/lefthook_$(uname -s)_$(uname -m) -o lefthook
+   chmod +x lefthook
+   sudo mv lefthook /usr/local/bin/
+
+   # Install hooks in the repo
+   lefthook install
+   ```
+4. Create a feature branch (`git checkout -b feature/amazing-feature`)
+5. Make your changes and commit (`git commit -m 'feat(cli): add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
 ## Acknowledgments
 
