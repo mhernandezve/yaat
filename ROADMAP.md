@@ -79,13 +79,13 @@ curl -sL https://raw.githubusercontent.com/miguel/bootstrap/main/bootstrap.sh | 
 
 ### README
 
-- [ ] Remove Windows references (supported platforms + symlinks section)
-- [ ] Update manifest example — replace `include` with `config_dirs` and `home_files`
-- [ ] Remove "Symlink or copy" from features — symlinks only
-- [ ] Add `update` command in Quick Start and Project Structure (`commands/update.rs`)
-- [ ] Remove references to `dotfiles-alt` (repo doesn't exist)
-- [ ] Add conventional commits section in Contributing
-- [ ] Update Installation with cargo-dist installer script
+- [x] Remove Windows references (supported platforms + symlinks section)
+- [x] Update manifest example — replace `include` with `config_dirs` and `home_files`
+- [x] Remove "Symlink or copy" from features — symlinks only
+- [x] Add `update` command in Quick Start and Project Structure (`commands/update.rs`)
+- [x] Remove references to `dotfiles-alt` (repo doesn't exist)
+- [x] Add conventional commits section in Contributing
+- [x] Update Installation with cargo-dist installer script
 - [ ] Add mention to bootstrap repo
 
 ### Automated Tests

@@ -15,12 +15,30 @@ A modern dotfiles manager written in Rust. YAAT helps you maintain a single sour
 - 🔄 **Update command**: Detect and add new configs as you install apps
 - ❓ **Interactive mode**: Ask about unknown configs with `--ask-unknown`
 - 🚫 **Smart ignore**: `.yaatignore` to persist skip decisions
-- 🔗 **Symlink or copy**: Choose how to sync your files
+- 🔗 **Symlink only**: Instant updates, no duplication
 - 🛡️ **Backup before sync**: Automatic backups prevent data loss
 - 📝 **Dry-run mode**: Preview changes before applying
 - 🔍 **Status tracking**: See what's synced and what's pending
 
 ## Installation
+
+### Pre-compiled Binaries (Recommended)
+
+Install the latest release with the official installer:
+
+```bash
+# Linux/macOS
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/mhernandezve/yaat/releases/latest/download/yaat-installer.sh | sh
+
+# Or with Homebrew (macOS/Linux)
+brew install mhernandezve/tap/yaat
+```
+
+The installer will download the appropriate binary for your platform and add it to your PATH.
+
+Supported platforms:
+- Linux (x86_64, ARM64)
+- macOS (Intel, Apple Silicon)
 
 ### From Source (requires Rust)
 
@@ -359,8 +377,6 @@ For migrating installed packages:
 ./scripts/install-packages.sh
 ```
 
-See [dotfiles-alt](https://github.com/mhernandezve/dotfiles-alt) for a complete example.
-
 ## Environment Variables
 
 - `YAAT_REPO`: Override the default repository path
@@ -490,7 +506,6 @@ src/
 
 ## Related Projects
 
-- **Dotfiles Example**: [dotfiles-alt](https://github.com/mhernandezve/dotfiles-alt) - Complete example with scripts
 - **Inspiration**: [yadm](https://github.com/TheLocehiliosan/yadm), [chezmoi](https://github.com/twpayne/chezmoi)
 
 ## License
