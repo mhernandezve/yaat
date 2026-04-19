@@ -12,3 +12,10 @@
 DECISIONS.md
 MEMORY.md
 ARCHITECTURE.mmd
+
+# User data directories (created by yaat init)
+/config/
+/home/
+/hosts/
+/scripts/
+yaat.yaml
