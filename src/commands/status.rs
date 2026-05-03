@@ -34,7 +34,7 @@ pub fn execute(verbose: bool, context: &mut CommandContext) -> Result<()> {
 
     // Configuration summary
     info!("Configuration:");
-    info!("  Repository path: {}", context.config.repo_path);
+    info!("  Repository path: {}", context.repo_path.display());
     info!(
         "  Symlinks: {}",
         if context.config.symlink.enabled {
@@ -210,37 +210,45 @@ fn check_sync_status(context: &CommandContext) -> Result<()> {
 
         let system_file = system_config.join(relative);
 
-        if !system_file.exists() {
-            pending += 1;
-            if context.config.symlink.enabled {
-                info!("  [PENDING] Symlink needed: {}", relative.display());
-            } else {
-                info!("  [PENDING] Copy needed: {}", relative.display());
+        match crate::symlink::check_symlink_status(&system_file, &repo_file)? {
+            crate::symlink::SymlinkStatus::Correct => {
+                synced += 1;
             }
-        } else if system_file.is_symlink() {
-            // Check if symlink points to the right place
-            match std::fs::read_link(&system_file) {
-                Ok(target) if target == repo_file => {
-                    synced += 1;
-                }
-                _ => {
-                    diverged += 1;
-                    info!("  [DIVERGED] Symlink mismatch: {}", relative.display());
+            crate::symlink::SymlinkStatus::Divergent { actual } => {
+                diverged += 1;
+                info!(
+                    "  [DIVERGED] Symlink mismatch: {} (expected: {}, actual: {})",
+                    relative.display(),
+                    repo_file.display(),
+                    actual.display()
+                );
+            }
+            crate::symlink::SymlinkStatus::Broken => {
+                diverged += 1;
+                info!("  [DIVERGED] Broken symlink: {}", relative.display());
+            }
+            crate::symlink::SymlinkStatus::Missing => {
+                pending += 1;
+                if context.config.symlink.enabled {
+                    info!("  [PENDING] Symlink needed: {}", relative.display());
+                } else {
+                    info!("  [PENDING] Copy needed: {}", relative.display());
                 }
             }
-        } else {
-            // File exists but is not a symlink - check if content matches
-            match files_equal(&repo_file, &system_file) {
-                Ok(true) => {
-                    synced += 1;
-                }
-                Ok(false) => {
-                    diverged += 1;
-                    info!("  [DIVERGED] Content differs: {}", relative.display());
-                }
-                Err(_) => {
-                    diverged += 1;
-                    info!("  [DIVERGED] Cannot compare: {}", relative.display());
+            crate::symlink::SymlinkStatus::NotASymlink => {
+                // File exists but is not a symlink - check if content matches
+                match files_equal(&repo_file, &system_file) {
+                    Ok(true) => {
+                        synced += 1;
+                    }
+                    Ok(false) => {
+                        diverged += 1;
+                        info!("  [DIVERGED] Content differs: {}", relative.display());
+                    }
+                    Err(_) => {
+                        diverged += 1;
+                        info!("  [DIVERGED] Cannot compare: {}", relative.display());
+                    }
                 }
             }
         }

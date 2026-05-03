@@ -69,6 +69,9 @@ yaat init ~/my-dotfiles
 # Or use YAAT_REPO environment variable
 export YAAT_REPO=~/my-dotfiles
 yaat init
+
+# Clone from an existing remote repository
+yaat init --clone https://github.com/username/dotfiles.git
 ```
 
 **Note**: `yaat init` only creates new repositories. If the repository already exists, use `yaat update` instead.
@@ -392,6 +395,9 @@ Initialize a new dotfiles repository.
 - Auto-detects known configs
 - Fails if repository already exists
 
+**Options:**
+- `--clone <URL>` - Clone from existing remote repository instead of creating new
+
 ### `yaat update [OPTIONS] [PATH]`
 Update an existing repository.
 - Detects new known configs automatically
@@ -556,3 +562,4 @@ chore(ci): add release-please workflow
 ## Acknowledgments
 
 Inspired by [yadm](https://github.com/TheLocehiliosan/yadm), [chezmoi](https://github.com/twpayne/chezmoi), and other dotfile managers.
+

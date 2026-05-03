@@ -9,6 +9,7 @@ mod config;
 mod git;
 mod known_configs;
 mod platform;
+mod symlink;
 
 use cli::{Cli, Commands};
 use commands::CommandContext;

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
-use tracing::{debug, info};
+use tracing::{info, warn};
 
 use crate::commands::CommandContext;
 use crate::platform::config_dir;
@@ -16,53 +16,68 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
 
     let mut synced_count = 0;
     let mut skipped_count = 0;
+    let mut already_synced_count = 0;
+
+    let effective_config_dirs = context.config.effective_config_dirs();
+    let effective_home_files = context.config.effective_home_files();
 
     // Sync config directories (as directory symlinks)
-    if !context.config.config_dirs.is_empty() {
+    if !effective_config_dirs.is_empty() {
         info!("Syncing config directories...");
-        let (synced, skipped) = sync_config_dirs(context, dry_run)?;
+        let (synced, skipped, already_synced) =
+            sync_config_dirs(context, &effective_config_dirs, dry_run)?;
         synced_count += synced;
         skipped_count += skipped;
+        already_synced_count += already_synced;
     }
 
     // Sync home files (as individual file symlinks)
-    if !context.config.home_files.is_empty() {
+    if !effective_home_files.is_empty() {
         info!("Syncing home files...");
-        let (synced, skipped) = sync_home_files(context, dry_run)?;
+        let (synced, skipped, already_synced) =
+            sync_home_files(context, &effective_home_files, dry_run)?;
         synced_count += synced;
         skipped_count += skipped;
+        already_synced_count += already_synced;
     }
 
     // Sync host-specific overrides (file by file)
     let repo_hosts_dir = context.repo_path.join("hosts").join(&hostname);
     if repo_hosts_dir.exists() {
         info!("Syncing host-specific configuration for {}...", hostname);
-        let (synced, skipped) = sync_host_overrides(&repo_hosts_dir, context, dry_run)?;
+        let (synced, skipped, already_synced) =
+            sync_host_overrides(&repo_hosts_dir, context, dry_run)?;
         synced_count += synced;
         skipped_count += skipped;
+        already_synced_count += already_synced;
     }
 
     if dry_run {
         info!(
-            "[DRY RUN] Would sync {} items, skip {}",
-            synced_count, skipped_count
+            "[DRY RUN] Summary: {} already synced, {} would sync, {} would skip",
+            already_synced_count, synced_count, skipped_count
         );
     } else {
         info!(
-            "✓ Successfully synced {} items, skipped {}",
-            synced_count, skipped_count
+            "✓ Summary: {} already synced, {} newly synced, {} skipped",
+            already_synced_count, synced_count, skipped_count
         );
     }
 
     Ok(())
 }
 
-fn sync_config_dirs(context: &CommandContext, dry_run: bool) -> Result<(usize, usize)> {
+fn sync_config_dirs(
+    context: &CommandContext,
+    config_dirs: &[String],
+    dry_run: bool,
+) -> Result<(usize, usize, usize)> {
     let mut synced = 0;
     let mut skipped = 0;
+    let mut already_synced = 0;
     let config_dir = config_dir()?;
 
-    for dir_name in &context.config.config_dirs {
+    for dir_name in config_dirs {
         // Skip comments
         if dir_name.starts_with('#') || dir_name.trim().is_empty() {
             continue;
@@ -73,23 +88,44 @@ fn sync_config_dirs(context: &CommandContext, dry_run: bool) -> Result<(usize, u
 
         // Check if repo directory exists
         if !repo_dir.exists() {
-            debug!("Repo directory does not exist: {}", repo_dir.display());
+            warn!("Repo directory does not exist: {}", repo_dir.display());
             skipped += 1;
             continue;
         }
 
-        // Check if already correctly symlinked
-        if system_dir.is_symlink() {
-            if let Ok(existing_target) = fs::read_link(&system_dir) {
-                if existing_target == repo_dir {
-                    debug!("Already synced: {}", system_dir.display());
-                    continue;
-                }
+        // Check symlink status using shared module
+        match crate::symlink::check_symlink_status(&system_dir, &repo_dir)? {
+            crate::symlink::SymlinkStatus::Correct => {
+                info!(
+                    "  Already synced: {} -> {}",
+                    system_dir.display(),
+                    repo_dir.display()
+                );
+                already_synced += 1;
+                continue;
+            }
+            crate::symlink::SymlinkStatus::Divergent { actual } => {
+                warn!(
+                    "Diverged symlink detected: {} -> {} (expected: {})",
+                    system_dir.display(),
+                    actual.display(),
+                    repo_dir.display()
+                );
+            }
+            crate::symlink::SymlinkStatus::Broken => {
+                warn!(
+                    "Broken symlink detected: {} (expected: {})",
+                    system_dir.display(),
+                    repo_dir.display()
+                );
+            }
+            crate::symlink::SymlinkStatus::Missing | crate::symlink::SymlinkStatus::NotASymlink => {
+                // Will be created or replaced below
             }
         }
 
         // Handle existing directory/file
-        if system_dir.exists() {
+        if system_dir.exists() || system_dir.is_symlink() {
             if context.config.symlink.backup {
                 let backup_path = format!("{}.backup", system_dir.display());
                 if !dry_run {
@@ -165,15 +201,20 @@ fn sync_config_dirs(context: &CommandContext, dry_run: bool) -> Result<(usize, u
         synced += 1;
     }
 
-    Ok((synced, skipped))
+    Ok((synced, skipped, already_synced))
 }
 
-fn sync_home_files(context: &CommandContext, dry_run: bool) -> Result<(usize, usize)> {
+fn sync_home_files(
+    context: &CommandContext,
+    home_files: &[String],
+    dry_run: bool,
+) -> Result<(usize, usize, usize)> {
     let mut synced = 0;
     let mut skipped = 0;
+    let mut already_synced = 0;
     let home_dir = dirs::home_dir().context("Could not determine home directory")?;
 
-    for file_name in &context.config.home_files {
+    for file_name in home_files {
         // Skip comments
         if file_name.starts_with('#') || file_name.trim().is_empty() {
             continue;
@@ -184,7 +225,7 @@ fn sync_home_files(context: &CommandContext, dry_run: bool) -> Result<(usize, us
 
         // Check if repo file exists
         if !repo_file.exists() {
-            debug!("Repo file does not exist: {}", repo_file.display());
+            warn!("Repo file does not exist: {}", repo_file.display());
             skipped += 1;
             continue;
         }
@@ -197,18 +238,39 @@ fn sync_home_files(context: &CommandContext, dry_run: bool) -> Result<(usize, us
             }
         }
 
-        // Check if already correctly symlinked
-        if system_file.is_symlink() {
-            if let Ok(existing_target) = fs::read_link(&system_file) {
-                if existing_target == repo_file {
-                    debug!("Already synced: {}", system_file.display());
-                    continue;
-                }
+        // Check symlink status using shared module
+        match crate::symlink::check_symlink_status(&system_file, &repo_file)? {
+            crate::symlink::SymlinkStatus::Correct => {
+                info!(
+                    "  Already synced: {} -> {}",
+                    system_file.display(),
+                    repo_file.display()
+                );
+                already_synced += 1;
+                continue;
+            }
+            crate::symlink::SymlinkStatus::Divergent { actual } => {
+                warn!(
+                    "Diverged symlink detected: {} -> {} (expected: {})",
+                    system_file.display(),
+                    actual.display(),
+                    repo_file.display()
+                );
+            }
+            crate::symlink::SymlinkStatus::Broken => {
+                warn!(
+                    "Broken symlink detected: {} (expected: {})",
+                    system_file.display(),
+                    repo_file.display()
+                );
+            }
+            crate::symlink::SymlinkStatus::Missing | crate::symlink::SymlinkStatus::NotASymlink => {
+                // Will be created or replaced below
             }
         }
 
         // Handle existing file
-        if system_file.exists() {
+        if system_file.exists() || system_file.is_symlink() {
             if context.config.symlink.backup {
                 let backup_path = format!("{}.backup", system_file.display());
                 if !dry_run {
@@ -283,16 +345,17 @@ fn sync_home_files(context: &CommandContext, dry_run: bool) -> Result<(usize, us
         synced += 1;
     }
 
-    Ok((synced, skipped))
+    Ok((synced, skipped, already_synced))
 }
 
 fn sync_host_overrides(
     repo_hosts_dir: &Path,
     context: &CommandContext,
     dry_run: bool,
-) -> Result<(usize, usize)> {
+) -> Result<(usize, usize, usize)> {
     let mut synced = 0;
     let mut skipped = 0;
+    let mut already_synced = 0;
     let config_dir = config_dir()?;
 
     for entry in walkdir::WalkDir::new(repo_hosts_dir)
@@ -317,7 +380,7 @@ fn sync_host_overrides(
             &relative_path.to_string_lossy(),
             Some(&context.config.default_host),
         ) {
-            debug!("Skipping excluded file: {}", relative_path.display());
+            warn!("Skipping excluded file: {}", relative_path.display());
             skipped += 1;
             continue;
         }
@@ -333,18 +396,39 @@ fn sync_host_overrides(
             }
         }
 
-        // Check if already correctly symlinked
-        if target_path.is_symlink() {
-            if let Ok(existing_target) = fs::read_link(&target_path) {
-                if existing_target == repo_file_path {
-                    debug!("Already synced: {}", target_path.display());
-                    continue;
-                }
+        // Check symlink status using shared module
+        match crate::symlink::check_symlink_status(&target_path, &repo_file_path)? {
+            crate::symlink::SymlinkStatus::Correct => {
+                info!(
+                    "  Already synced: {} -> {}",
+                    target_path.display(),
+                    repo_file_path.display()
+                );
+                already_synced += 1;
+                continue;
+            }
+            crate::symlink::SymlinkStatus::Divergent { actual } => {
+                warn!(
+                    "Diverged symlink detected: {} -> {} (expected: {})",
+                    target_path.display(),
+                    actual.display(),
+                    repo_file_path.display()
+                );
+            }
+            crate::symlink::SymlinkStatus::Broken => {
+                warn!(
+                    "Broken symlink detected: {} (expected: {})",
+                    target_path.display(),
+                    repo_file_path.display()
+                );
+            }
+            crate::symlink::SymlinkStatus::Missing | crate::symlink::SymlinkStatus::NotASymlink => {
+                // Will be created or replaced below
             }
         }
 
         // Handle existing file
-        if target_path.exists() {
+        if target_path.exists() || target_path.is_symlink() {
             if context.config.symlink.backup {
                 let backup_path = format!("{}.backup", target_path.display());
                 if !dry_run {
@@ -418,7 +502,7 @@ fn sync_host_overrides(
         synced += 1;
     }
 
-    Ok((synced, skipped))
+    Ok((synced, skipped, already_synced))
 }
 
 fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<()> {

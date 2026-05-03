@@ -88,6 +88,13 @@ curl -sL https://raw.githubusercontent.com/miguel/bootstrap/main/bootstrap.sh | 
 - [x] Update Installation with cargo-dist installer script
 - [ ] Add mention to bootstrap repo
 
+### Commands
+
+- [ ] **TODO:** Decide on `yaat init <url>` vs `yaat clone <url>` semantics
+  - `yaat init <url>` - Reuses init with URL detection (current implementation)
+  - `yaat clone <url>` - Separate clone command, consistent with git
+  - Trade-off: Single command vs semantic clarity
+
 ### Automated Tests
 
 - [ ] Integration tests for `backup` command
