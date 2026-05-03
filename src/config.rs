@@ -25,6 +25,11 @@ pub struct YaatConfig {
     #[serde(default)]
     pub home_files: Vec<String>,
 
+    /// Unified include list (e.g., config/hypr/, home/.gitconfig)
+    /// If provided, config_dirs and home_files are derived from it.
+    #[serde(default)]
+    pub include: Vec<String>,
+
     /// Host-specific configurations
     #[serde(default)]
     pub hosts: HashMap<String, HostConfig>,
@@ -75,6 +80,7 @@ impl Default for YaatConfig {
             ],
             config_dirs: vec![], // Empty by default, will be populated during init
             home_files: vec![],  // Empty by default, will be populated during init
+            include: vec![],
             hosts: HashMap::new(),
             symlink: SymlinkConfig::default(),
         }
@@ -176,5 +182,41 @@ impl YaatConfig {
         self.home_files
             .iter()
             .any(|f| f == name || f.trim_start_matches('.') == name.trim_start_matches('.'))
+    }
+
+    /// Get effective config dirs, deriving from `include` if present.
+    pub fn effective_config_dirs(&self) -> Vec<String> {
+        if !self.include.is_empty() {
+            let mut dirs = Vec::new();
+            for item in &self.include {
+                let trimmed = item.trim_end_matches('/');
+                if trimmed.starts_with("config/") {
+                    let rest = &trimmed[7..]; // after "config/"
+                    if !rest.contains('/') {
+                        // Top-level config dir, e.g., config/hypr
+                        dirs.push(rest.to_string());
+                    }
+                }
+            }
+            dirs
+        } else {
+            self.config_dirs.clone()
+        }
+    }
+
+    /// Get effective home files, deriving from `include` if present.
+    pub fn effective_home_files(&self) -> Vec<String> {
+        if !self.include.is_empty() {
+            let mut files = Vec::new();
+            for item in &self.include {
+                let trimmed = item.trim_end_matches('/');
+                if trimmed.starts_with("home/") {
+                    files.push(trimmed.strip_prefix("home/").unwrap().to_string());
+                }
+            }
+            files
+        } else {
+            self.home_files.clone()
+        }
     }
 }

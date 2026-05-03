@@ -46,6 +46,12 @@ This document records architectural and design decisions made for YAAT.
 | Cloud sync | Git is the sync mechanism, keeps it simple |
 | Separate TUI binary | Extra maintenance, subcommand is cleaner |
 
+## Command Semantics (Under Evaluation)
+
+| Decision | Options | Trade-offs |
+|----------|---------|------------|
+| **Clone vs Init with URL** | `yaat clone <url>` vs `yaat init <url>` | `clone` is semantically clearer and consistent with git; `init <url>` is fewer commands but overloads init's meaning |
+
 ## Conventional Commits Scopes
 
 - `cli` - Command-line interface changes

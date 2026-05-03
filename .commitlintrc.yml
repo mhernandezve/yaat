@@ -29,6 +29,7 @@ rules:
       - ci
       - deps
       - bootstrap
+      - licensing
 
   # Require scope (we always use it)
   scope-empty:

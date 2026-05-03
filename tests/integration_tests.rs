@@ -184,6 +184,7 @@ fn test_sync_dry_run() {
 
     assert!(success);
     assert!(stdout.contains("[DRY RUN]"));
+    assert!(stdout.contains("Summary:"));
 }
 
 #[test]
