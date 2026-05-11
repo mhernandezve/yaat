@@ -61,6 +61,7 @@ This document records architectural and design decisions made for YAAT.
 - `ci` - Continuous integration
 - `deps` - Dependencies
 - `bootstrap` - Bootstrap scripts and repo
+- `licensing` - Licensing
 
 ## Format
 
@@ -70,6 +71,7 @@ type(scope): description
 feat(cli): add update command
 fix(sync): resolve symlink conflict on macOS
 chore(ci): add release-please workflow
+chore(licensing): add licensing scope
 ```
 
 ---
