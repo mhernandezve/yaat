@@ -2,14 +2,14 @@ commit-msg:
   commands:
     conventional-commits:
       run: |
-        REGEX="^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\((cli|sync|manifest|encrypted|ci|deps|bootstrap)\))?: .+"
+        REGEX="^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\((cli|sync|manifest|encrypted|ci|deps|bootstrap|licensing)\))?: .+"
         if ! cat {1} | grep -qE "$REGEX"; then
           echo "Error: Commit message does not follow conventional commits format."
           echo ""
           echo "Expected format: type(scope): description"
           echo ""
           echo "Valid types: feat, fix, chore, docs, style, refactor, perf, test, build, ci, revert"
-          echo "Valid scopes: cli, sync, manifest, encrypted, ci, deps, bootstrap"
+          echo "Valid scopes: cli, sync, manifest, encrypted, ci, deps, bootstrap, licensing"
           echo ""
           echo "Examples:"
           echo "  feat(cli): add update command"

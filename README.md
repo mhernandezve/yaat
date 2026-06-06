@@ -358,27 +358,11 @@ During `yaat init` and `yaat update`, YAAT automatically detects these common co
 
 ## Helper Scripts
 
-Place these in your dotfiles repository (not in YAAT itself):
+For complete workflows (bootstrap new system, install packages, reload desktop components), see:
 
-### `apply-dotfiles`
-Main entrypoint that orchestrates sync + runtime reload:
-```bash
-./scripts/apply-dotfiles
-# Detects host, runs yaat sync, reloads desktop components
-```
+**[yaat-bootstrap](https://github.com/mhernandezve/yaat-bootstrap)** - Example scripts and templates for your dotfiles repository.
 
-### `export-packages.sh` / `install-packages.sh`
-For migrating installed packages:
-```bash
-# Export packages
-./scripts/export-packages.sh
-
-# Preview missing packages
-./scripts/install-packages.sh --dry-run --only-missing
-
-# Install missing packages
-./scripts/install-packages.sh
-```
+YAAT focuses solely on file synchronization. Helper scripts should be maintained in your own dotfiles repository.
 
 ## Environment Variables
 
@@ -491,25 +475,6 @@ cargo clippy -- -D warnings
 cargo build --release
 ```
 
-### Project Structure
-
-```
-src/
-├── main.rs           # Entry point
-├── cli.rs            # CLI argument parsing
-├── config.rs         # Configuration management
-├── git.rs            # Git operations wrapper
-├── known_configs.rs  # Auto-detection whitelist
-├── platform.rs       # Cross-platform utilities
-└── commands/
-    ├── init.rs       # Initialize repository (new only)
-    ├── update.rs     # Update existing repository
-    ├── add.rs        # Add files to tracking
-    ├── sync.rs       # Sync to system
-    ├── backup.rs     # Backup to repository
-    └── status.rs     # Show status
-```
-
 ## Related Projects
 
 - **Inspiration**: [yadm](https://github.com/TheLocehiliosan/yadm), [chezmoi](https://github.com/twpayne/chezmoi)
@@ -528,7 +493,7 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 
 **Types:** `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `revert`
 
-**Scopes:** `cli`, `sync`, `manifest`, `encrypted`, `ci`, `deps`, `bootstrap`
+**Scopes:** `cli`, `sync`, `manifest`, `encrypted`, `ci`, `deps`, `bootstrap`, `licensing`
 
 Examples:
 ```
