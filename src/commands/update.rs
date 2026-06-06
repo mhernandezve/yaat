@@ -164,26 +164,27 @@ pub fn execute(repo_path: Option<PathBuf>, ask_unknown: bool, dry_run: bool) -> 
     }
 
     // Commit changes if not dry_run
-    if !dry_run && (!added_configs.is_empty() || !added_home.is_empty()) {
-        if prompt_yes_no("\nCommit changes? [Y/n]")? {
-            let repo = GitRepo::open(&repo_path)?;
-            repo.add(&config_path)?;
+    if !dry_run
+        && (!added_configs.is_empty() || !added_home.is_empty())
+        && prompt_yes_no("\nCommit changes? [Y/n]")?
+    {
+        let repo = GitRepo::open(&repo_path)?;
+        repo.add(&config_path)?;
 
-            let added_items: Vec<String> = added_configs
-                .iter()
-                .chain(added_home.iter())
-                .cloned()
-                .collect();
+        let added_items: Vec<String> = added_configs
+            .iter()
+            .chain(added_home.iter())
+            .cloned()
+            .collect();
 
-            let commit_msg = if added_items.len() == 1 {
-                format!("Update yaat.yaml - add {}", added_items[0])
-            } else {
-                format!("Update yaat.yaml - add {} configs", added_items.len())
-            };
+        let commit_msg = if added_items.len() == 1 {
+            format!("Update yaat.yaml - add {}", added_items[0])
+        } else {
+            format!("Update yaat.yaml - add {} configs", added_items.len())
+        };
 
-            repo.commit(&commit_msg)?;
-            info!("Created commit: {}", commit_msg);
-        }
+        repo.commit(&commit_msg)?;
+        info!("Created commit: {}", commit_msg);
     }
 
     if dry_run {

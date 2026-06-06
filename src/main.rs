@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize tracing
-    let _subscriber = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .with_max_level(if cli.verbose {
             tracing::Level::DEBUG
         } else {

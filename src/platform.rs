@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Get the default dotfiles repository path
 /// On Unix: ~/.dotfiles
@@ -41,7 +41,7 @@ pub fn ensure_dir(path: &PathBuf) -> Result<()> {
 }
 
 /// Get the YAAT configuration file path inside the repo
-pub fn yaat_config_path(repo_path: &PathBuf) -> PathBuf {
+pub fn yaat_config_path(repo_path: &Path) -> PathBuf {
     repo_path.join("yaat.yaml")
 }
 
@@ -77,7 +77,7 @@ pub fn system_to_repo_path(system_path: &PathBuf, repo_path: &PathBuf) -> Result
 
 /// Convert a repo-relative path to the corresponding system path
 #[allow(dead_code)]
-pub fn repo_to_system_path(repo_relative: &PathBuf, repo_path: &PathBuf) -> Result<PathBuf> {
+pub fn repo_to_system_path(repo_relative: &PathBuf, repo_path: &Path) -> Result<PathBuf> {
     if repo_relative.starts_with("config/") {
         let config = config_dir()?;
         let stripped = repo_relative

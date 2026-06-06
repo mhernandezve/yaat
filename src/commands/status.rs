@@ -210,7 +210,7 @@ fn check_sync_status(context: &CommandContext) -> Result<()> {
 
         let system_file = system_config.join(relative);
 
-        match crate::symlink::check_symlink_status(&system_file, &repo_file)? {
+        match crate::symlink::check_symlink_status(&system_file, repo_file)? {
             crate::symlink::SymlinkStatus::Correct => {
                 synced += 1;
             }
@@ -237,7 +237,7 @@ fn check_sync_status(context: &CommandContext) -> Result<()> {
             }
             crate::symlink::SymlinkStatus::NotASymlink => {
                 // File exists but is not a symlink - check if content matches
-                match files_equal(&repo_file, &system_file) {
+                match files_equal(repo_file, &system_file) {
                     Ok(true) => {
                         synced += 1;
                     }

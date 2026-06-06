@@ -190,8 +190,7 @@ impl YaatConfig {
             let mut dirs = Vec::new();
             for item in &self.include {
                 let trimmed = item.trim_end_matches('/');
-                if trimmed.starts_with("config/") {
-                    let rest = &trimmed[7..]; // after "config/"
+                if let Some(rest) = trimmed.strip_prefix("config/") {
                     if !rest.contains('/') {
                         // Top-level config dir, e.g., config/hypr
                         dirs.push(rest.to_string());

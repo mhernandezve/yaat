@@ -397,7 +397,7 @@ fn sync_host_overrides(
         }
 
         // Check symlink status using shared module
-        match crate::symlink::check_symlink_status(&target_path, &repo_file_path)? {
+        match crate::symlink::check_symlink_status(&target_path, repo_file_path)? {
             crate::symlink::SymlinkStatus::Correct => {
                 info!(
                     "  Already synced: {} -> {}",

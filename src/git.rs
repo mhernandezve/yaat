@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use git2::{Repository, Signature, StatusOptions};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
 
 pub struct GitRepo {
@@ -110,7 +110,7 @@ Thumbs.db
 
         // Add all files in the working directory
         index
-            .add_all(&["."], git2::IndexAddOption::DEFAULT, None)
+            .add_all(["."], git2::IndexAddOption::DEFAULT, None)
             .context("Failed to add all files to index")?;
 
         index.write().context("Failed to write index")?;
@@ -202,6 +202,6 @@ Thumbs.db
 
 /// Check if a directory is a git repository
 /// Accepts empty repositories (no commits yet)
-pub fn is_git_repo(path: &PathBuf) -> bool {
+pub fn is_git_repo(path: &Path) -> bool {
     path.join(".git").is_dir()
 }
