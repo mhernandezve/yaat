@@ -65,6 +65,7 @@ pub fn check_symlink_status(system_path: &Path, expected_target: &Path) -> Resul
 }
 
 /// Check if a path is a symlink pointing to the expected target.
+#[allow(dead_code)]
 pub fn is_correct_symlink(system_path: &Path, expected_target: &Path) -> Result<bool> {
     Ok(matches!(
         check_symlink_status(system_path, expected_target)?,

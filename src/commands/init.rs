@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
 use crate::config::YaatConfig;
@@ -41,9 +41,11 @@ pub fn execute(repo_path: PathBuf, clone_url: Option<String>) -> Result<()> {
     let (detected_configs, detected_home_files) = detect_known_configs();
 
     // Create config file (yaat.yaml) with detected configs
-    let mut config = YaatConfig::default();
-    config.config_dirs = detected_configs;
-    config.home_files = detected_home_files;
+    let config = YaatConfig {
+        config_dirs: detected_configs,
+        home_files: detected_home_files,
+        ..Default::default()
+    };
     let config_path = repo_path.join("yaat.yaml");
     config.to_file(&config_path)?;
     debug!("Created yaat.yaml");
@@ -121,7 +123,7 @@ pub fn execute(repo_path: PathBuf, clone_url: Option<String>) -> Result<()> {
 }
 
 /// Check if a directory is already a YAAT repository
-fn is_yaat_repo(path: &PathBuf) -> bool {
+fn is_yaat_repo(path: &Path) -> bool {
     path.join("yaat.yaml").exists() && path.join(".git").exists()
 }
 
