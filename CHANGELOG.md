@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/mhernandezve/yaat/compare/yaat-v0.1.2...yaat-v0.1.3) (2026-06-06)
+
+
+### Bug Fixes
+
+* **ci:** resolve all clippy warnings for ci ([05440b0](https://github.com/mhernandezve/yaat/commit/05440b0852a6fbaaa21614135ec8eb4ab6094488))
+
 ## [0.1.2](https://github.com/mhernandezve/yaat/compare/yaat-v0.1.1...yaat-v0.1.2) (2026-05-03)
 
 
