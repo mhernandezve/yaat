@@ -60,6 +60,13 @@ pub fn execute(repo_path: PathBuf, clone_url: Option<String>) -> Result<()> {
     ensure_dir(&hosts_dir)?;
     info!("Created directory structure (config/, home/, hosts/)");
 
+    // Create empty .yaatignore
+    let yaatignore_path = repo_path.join(".yaatignore");
+    if !yaatignore_path.exists() {
+        std::fs::write(&yaatignore_path, "# YAAT ignore list - configs that won't be prompted in --ask-unknown\n")?;
+        debug!("Created .yaatignore");
+    }
+
     // Initialize or clone git repository
     let was_cloned = clone_url.is_some();
     let repo = if let Some(url) = clone_url {

@@ -24,7 +24,14 @@ pub fn config_dir() -> Result<PathBuf> {
 }
 
 /// Get the current hostname
+/// Priority: DOTFILES_HOST env var > system hostname
 pub fn hostname() -> Result<String> {
+    if let Ok(host) = std::env::var("DOTFILES_HOST") {
+        if !host.is_empty() {
+            return Ok(host);
+        }
+    }
+
     hostname::get()
         .context("Could not determine hostname")?
         .into_string()

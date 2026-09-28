@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(name = "yaat")]
 #[command(about = "Yet Another Assets Tool")]
-#[command(version = "0.1.0")]
+#[command(version = "0.1.2")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

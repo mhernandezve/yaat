@@ -21,11 +21,11 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
     let effective_config_dirs = context.config.effective_config_dirs();
     let effective_home_files = context.config.effective_home_files();
 
-    // Sync config directories (as directory symlinks)
+    // Sync config directories (as directory symlinks, or individual symlinks if host exclusions apply)
     if !effective_config_dirs.is_empty() {
         info!("Syncing config directories...");
         let (synced, skipped, already_synced) =
-            sync_config_dirs(context, &effective_config_dirs, dry_run)?;
+            sync_config_dirs(context, &effective_config_dirs, &hostname, dry_run)?;
         synced_count += synced;
         skipped_count += skipped;
         already_synced_count += already_synced;
@@ -35,7 +35,7 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
     if !effective_home_files.is_empty() {
         info!("Syncing home files...");
         let (synced, skipped, already_synced) =
-            sync_home_files(context, &effective_home_files, dry_run)?;
+            sync_home_files(context, &effective_home_files, &hostname, dry_run)?;
         synced_count += synced;
         skipped_count += skipped;
         already_synced_count += already_synced;
@@ -70,6 +70,7 @@ pub fn execute(host: Option<String>, dry_run: bool, context: &mut CommandContext
 fn sync_config_dirs(
     context: &CommandContext,
     config_dirs: &[String],
+    hostname: &str,
     dry_run: bool,
 ) -> Result<(usize, usize, usize)> {
     let mut synced = 0;
@@ -90,6 +91,20 @@ fn sync_config_dirs(
         if !repo_dir.exists() {
             warn!("Repo directory does not exist: {}", repo_dir.display());
             skipped += 1;
+            continue;
+        }
+
+        // Check if host has exclusions within this config dir
+        let has_host_exclusions = context.config.get_host_config(Some(hostname))
+            .map(|h| h.exclude.iter().any(|e| e.starts_with(dir_name) || format!("config/{}", dir_name).contains(e)))
+            .unwrap_or(false);
+
+        if has_host_exclusions {
+            // Sync file-by-file to respect host exclusions
+            let (s, sk, a) = sync_config_dir_files(context, &repo_dir, &system_dir, dir_name, hostname, dry_run)?;
+            synced += s;
+            skipped += sk;
+            already_synced += a;
             continue;
         }
 
@@ -204,9 +219,102 @@ fn sync_config_dirs(
     Ok((synced, skipped, already_synced))
 }
 
+fn sync_config_dir_files(
+    context: &CommandContext,
+    repo_dir: &Path,
+    system_dir: &Path,
+    dir_name: &str,
+    hostname: &str,
+    dry_run: bool,
+) -> Result<(usize, usize, usize)> {
+    let mut synced = 0;
+    let mut skipped = 0;
+    let mut already_synced = 0;
+
+    for entry in walkdir::WalkDir::new(repo_dir)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let repo_file = entry.path();
+        if repo_file.is_dir() {
+            continue;
+        }
+
+        let relative = match repo_file.strip_prefix(repo_dir) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+
+        let relative_str = format!("config/{}/{}", dir_name, relative.display());
+
+        if context.config.is_excluded(&relative_str, Some(hostname)) {
+            info!("  Excluded by host config: {}", relative_str);
+            skipped += 1;
+            continue;
+        }
+
+        let target = system_dir.join(relative);
+
+        // Ensure parent directory exists
+        if let Some(parent) = target.parent() {
+            if !parent.exists() && !dry_run {
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+            }
+        }
+
+        match crate::symlink::check_symlink_status(&target, repo_file)? {
+            crate::symlink::SymlinkStatus::Correct => {
+                already_synced += 1;
+                continue;
+            }
+            _ => {}
+        }
+
+        if target.exists() || target.is_symlink() {
+            if context.config.symlink.backup {
+                let backup_path = format!("{}.backup", target.display());
+                if !dry_run {
+                    fs::rename(&target, &backup_path)
+                        .with_context(|| format!("Failed to backup {}", target.display()))?;
+                }
+            } else if !dry_run {
+                fs::remove_file(&target)
+                    .with_context(|| format!("Failed to remove {}", target.display()))?;
+            }
+        }
+
+        if context.config.symlink.enabled {
+            if dry_run {
+                info!("[DRY RUN] Would create symlink: {} -> {}", target.display(), repo_file.display());
+            } else {
+                std::os::unix::fs::symlink(repo_file, &target).with_context(|| {
+                    format!("Failed to create symlink: {} -> {}", target.display(), repo_file.display())
+                })?;
+                info!("Created symlink: {} -> {}", target.display(), repo_file.display());
+            }
+        } else {
+            if dry_run {
+                info!("[DRY RUN] Would copy: {} -> {}", repo_file.display(), target.display());
+            } else {
+                fs::copy(repo_file, &target).with_context(|| {
+                    format!("Failed to copy: {} -> {}", repo_file.display(), target.display())
+                })?;
+                info!("Copied: {} -> {}", repo_file.display(), target.display());
+            }
+        }
+
+        synced += 1;
+    }
+
+    Ok((synced, skipped, already_synced))
+}
+
 fn sync_home_files(
     context: &CommandContext,
     home_files: &[String],
+    hostname: &str,
     dry_run: bool,
 ) -> Result<(usize, usize, usize)> {
     let mut synced = 0;
@@ -222,6 +330,13 @@ fn sync_home_files(
 
         let repo_file = context.repo_path.join("home").join(file_name);
         let system_file = home_dir.join(file_name);
+
+        let repo_relative = format!("home/{}", file_name);
+        if context.config.is_excluded(&repo_relative, Some(hostname)) {
+            info!("  Excluded by host config: {}", repo_relative);
+            skipped += 1;
+            continue;
+        }
 
         // Check if repo file exists
         if !repo_file.exists() {

@@ -22,24 +22,6 @@ A modern dotfiles manager written in Rust. YAAT helps you maintain a single sour
 
 ## Installation
 
-### Pre-compiled Binaries (Recommended)
-
-Install the latest release with the official installer:
-
-```bash
-# Linux/macOS
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/mhernandezve/yaat/releases/latest/download/yaat-installer.sh | sh
-
-# Or with Homebrew (macOS/Linux)
-brew install mhernandezve/tap/yaat
-```
-
-The installer will download the appropriate binary for your platform and add it to your PATH.
-
-Supported platforms:
-- Linux (x86_64, ARM64)
-- macOS (Intel, Apple Silicon)
-
 ### From Source (requires Rust)
 
 ```bash
@@ -85,8 +67,7 @@ This creates:
 ├── home/            # Files that go to ~ (symlinked individually)
 ├── hosts/           # Host-specific configurations
 ├── yaat.yaml        # YAAT configuration
-├── .gitignore       # Default ignores
-└── .yaatignore      # Your personal ignore list (created with --ask-unknown)
+└── .yaatignore      # Your personal ignore list
 ```
 
 ### 2. Update to Detect All Configs
@@ -356,14 +337,6 @@ During `yaat init` and `yaat update`, YAAT automatically detects these common co
    - Copies files back to repository
    - Creates a git commit
 
-## Helper Scripts
-
-For complete workflows (bootstrap new system, install packages, reload desktop components), see:
-
-**[yaat-bootstrap](https://github.com/mhernandezve/yaat-bootstrap)** - Example scripts and templates for your dotfiles repository.
-
-YAAT focuses solely on file synchronization. Helper scripts should be maintained in your own dotfiles repository.
-
 ## Environment Variables
 
 - `YAAT_REPO`: Override the default repository path
@@ -381,6 +354,14 @@ Initialize a new dotfiles repository.
 
 **Options:**
 - `--clone <URL>` - Clone from existing remote repository instead of creating new
+
+### `yaat add <FILE>`
+Add a file to the dotfiles repository.
+- Copies the file to the appropriate location in the repo
+- Updates `yaat.yaml` if needed
+
+**Options:**
+- `-H, --host <HOST>` - Add as host-specific configuration
 
 ### `yaat update [OPTIONS] [PATH]`
 Update an existing repository.
@@ -437,12 +418,6 @@ Or edit `yaat.yaml` manually to add configurations.
 ### Symlink Issues
 
 YAAT requires Unix-based system (Linux or macOS). On Linux, ensure you have write permissions to `~/.config` and `~`.
-
-### Package Installation
-
-For package management scripts, ensure you have the appropriate helper:
-- **Arch**: `yay` or `paru` for AUR packages
-- **Debian/Ubuntu**: Standard `apt`
 
 ## Development
 
