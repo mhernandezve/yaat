@@ -475,6 +475,11 @@ cargo clippy -- -D warnings
 cargo build --release
 ```
 
+### Architecture Decisions
+
+Architecture Decision Records live in [`docs/adr/`](./docs/adr/). See the
+[index](./docs/adr/README.md) for the current list and status.
+
 ## Related Projects
 
 - **Inspiration**: [yadm](https://github.com/TheLocehiliosan/yadm), [chezmoi](https://github.com/twpayne/chezmoi)
